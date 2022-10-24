@@ -1,6 +1,6 @@
 # Opal Lang
 
-Opal is a simple compiled imperative language targeting the BW8 architecture. It has a static type system with weak type safety. It takes syntax cues from C and Rust.
+Opal is a simple imperative language targeting the BW8 architecture. It has a static type system with weak type safety. It takes syntax cues from C and Rust.
 
 ## Examples
 
@@ -114,6 +114,7 @@ Opal is a simple compiled imperative language targeting the BW8 architecture. It
     | "<" Type ">" Expression
     | UnaryOperator Expression
     | Expression BinaryOperator Expression
+    | Expression AssignmentOperator Expression
     | "(" Expression ")"
 
 ### TypeDeclaration
@@ -141,8 +142,8 @@ Opal is a simple compiled imperative language targeting the BW8 architecture. It
     | "for" Identifier ":" Type "=" Expression ":" Expression ":" Expression "{" Statement* "}"
 
 ### CaseStatement
-      "case" Expression "{" Statement* "}"
-    | "default"         "{" Statement* "}"
+      "case" Expression ":" Statement*
+    | "default"         ":" Statement*
 
 ### SwitchStatement
     "switch" Expression "{" CaseStatement* "}"
