@@ -53,9 +53,9 @@ Opal is a simple imperative language targeting the BW8 architecture. It has a st
 
 ### Type
       "u8"
-    | "s8"
+    | "i8"
     | "u16"
-    | "s16"
+    | "i16"
     | Identifier
     | Type "*"
     | Type "[" IntegerLiteral "]"
@@ -128,7 +128,7 @@ Opal is a simple imperative language targeting the BW8 architecture. It has a st
     | Identifier ":" Type ";"
 
 ### AssignmentStatement
-    Expression AssignmentOperator Expression
+    Expression AssignmentOperator Expression ";"
 
 ### IfStatement
       "if" Expression "{" Statement* "}"
