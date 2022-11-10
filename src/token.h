@@ -1,12 +1,19 @@
 #ifndef _TOKEN_H
 #define _TOKEN_H
 
+#include <stdbool.h>
+
 #define KEYWORD_TOKEN_COUNT (22)
+
+#define HEX_CHARS "0123456789abcdef"
+#define BIN_CHARS "01"
 
 typedef enum TokenKind_t {
 	Token_Keyword,
 	Token_Identifier,
-	Token_IntegerLiteral,
+	Token_DecIntegerLiteral,
+	Token_HexIntegerLiteral,
+	Token_BinIntegerLiteral,
 	Token_CharLiteral,
 	Token_StringLiteral,
 	Token_LSquare,
@@ -21,6 +28,7 @@ typedef enum TokenKind_t {
 	Token_RChevron,
 	Token_Colon,
 	Token_SemiColon,
+	Token_Comma,
 	Token_Plus,
 	Token_Minus,
 	Token_Exclamation,
@@ -49,17 +57,22 @@ typedef enum TokenKind_t {
 	Token_Asterisk,
 	Token_FSlash,
 	Token_Percent,
-	Token_Dot
+	Token_Dot,
+	Token_EOF
 } TokenKind;
 
 typedef struct Token_t {
 	TokenKind kind;
 	char* value;
+	bool value_is_dynamic;
 } Token;
 
 char* KEYWORD_TOKENS[22];
 
 Token* token_init(TokenKind kind, char* value);
 void token_free(Token* token);
+int token_print(Token* token);
+char* token_kind_repr(TokenKind kind);
+bool token_str_is_keyword(char* str, char** keyword);
 
 #endif
