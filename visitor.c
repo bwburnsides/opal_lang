@@ -131,14 +131,14 @@ int main(int argc, char** argv) {
 
     UnaryExpression* uny = NewExpression(UnaryExpressionKind);
     if (uny == NULL) {
-        return -1;
+        return EXIT_FAILURE;
     }
     uny->right = "b";
     uny->op = "!";
 
     BinaryExpression* bin = NewExpression(BinaryExpressionKind);
     if (bin == NULL) {
-        return -1;
+        return EXIT_FAILURE;
     }
     bin->left = "a";
     bin->op = "+";
@@ -147,5 +147,5 @@ int main(int argc, char** argv) {
     EXPR_ACCEPT(uny, PrintExpressionVisitor);
     EXPR_ACCEPT(bin, PrintExpressionVisitor);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
