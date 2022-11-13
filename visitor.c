@@ -104,18 +104,22 @@ void PrintBinaryExpression(ExpressionVisitor* visitor, Expression* expr) {
 
 void DefaultVisitorHandler(ExpressionVisitor* visitor, Expression* expr) {
     fprintf(
-        stdout,
+        stderr,
         "Unaccepted visit of ExpressionKind %d by ExpressionVisitor %d\n",
         expr->kind, visitor->kind
     );
-    exit(-1);
+    exit(EXIT_FAILURE);
 }
 
 void InitializeExpressionVisitors() {
     for (int i = 0; i < ExpressionVisitorCount; i++) {
         EXPRESSION_VISITORS[i] = malloc(sizeof(ExpressionVisitor));
         if (EXPRESSION_VISITORS[i] == NULL) {
-            exit(-1);
+            fprintf(
+                stderr,
+                "Unable to initialize memory for EXPRESSION_VISITORS\n"
+            );
+            exit(EXIT_FAILURE);
         }
         EXPRESSION_VISITORS[i]->kind = i;
         EXPRESSION_VISITORS[i]->unary_expression = &DefaultVisitorHandler;
