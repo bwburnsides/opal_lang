@@ -87,8 +87,9 @@ Token* lexer_collect_token(Lexer* lexer) {
 		return token;
 	}
 
-	while (lexer->current == ' ' || lexer->current == '\n') {
+	if (isspace(lexer->current)) {
 		lexer_advance(lexer);
+		return lexer_collect_token(lexer);
 	}
 
 	if (isalpha(lexer->current)) {
@@ -279,8 +280,12 @@ Token* lexer_collect_primitive(Lexer* lexer) {
 			break;
 
 		default:
-			printf("Lexer error: unrecognized character \'%c\'", lexer->current);
-			exit(-1);
+			printf(
+				"Lexer error: unrecognized ASCII character 0x%02X at index %d.\n",
+				lexer->current,
+				lexer->index
+			);
+			exit(EXIT_FAILURE);
 	}
 
 	lexer_advance(lexer);
