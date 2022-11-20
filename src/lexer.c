@@ -19,34 +19,46 @@ Lexer* lexer_init(char* content) {
 	}
 
 	lexer->index = 0;
+	lexer->current = content[0];
 	lexer->content = content;
-	lexer->current = lexer->content[0];
-	lexer->capacity = 0;
-	lexer->count = 0;
 
-	lexer->tokens = calloc(INIT_TOKEN_CT, sizeof(Token*));
+	lexer->tokens = calloc(INIT_TOKEN_CAP, sizeof(Token*));
 	if (lexer->tokens == NULL) {
+		free(lexer);
 		return NULL;
 	}
+
+	lexer->capacity = INIT_TOKEN_CAP;
+	lexer->count = 0;
 
 	return lexer;
 }
 
 void lexer_free(Lexer* lexer) {
+	for (int i = 0; i < lexer->count; i++) {
+		free(lexer->tokens[i]);
+	}
+
 	free(lexer->tokens);
 	free(lexer);
 }
 
 int lexer_print(Lexer* lexer) {
 	return printf(
-		"Lexer(\n   index = %i\n   current = \'%c\'\n   content = \"%s\"\n   capacity = %i\n    count = %i\n)\n",
+		"Lexer(\n   index = %i\n   current = \'%c\'\n   content = \"%s\"\n   capacity = %i\n   count = %i\n)\n",
 		lexer->index, lexer->current, lexer->content, lexer->capacity, lexer->count
 	);
 }
 
+int lexer_print_tokens(Lexer* lexer) {
+	for (int i = 0; i < lexer->count; i++) {
+		printf("Index %d: ", i);
+		token_print(lexer->tokens[i]);
+	}
+}
+
 Token* lexer_consume(Lexer* lexer) {
 	Token* token = lexer_collect_token(lexer);
-	token_print(token);
 	lexer_append(lexer, token);
 	return token;
 }

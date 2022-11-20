@@ -5,7 +5,7 @@
 #include "token.h"
 
 #define MAX_INT_LENGTH (100)
-#define INIT_TOKEN_CT (1000)
+#define INIT_TOKEN_CAP (1000)
 
 typedef struct Lexer_t {
 	size_t index;
@@ -19,6 +19,7 @@ typedef struct Lexer_t {
 Lexer* lexer_init(char* content);
 void lexer_free(Lexer* lexer);
 int lexer_print(Lexer* lexer);
+int lexer_print_tokens(Lexer* lexer);
 Token* lexer_consume(Lexer* lexer);
 void lexer_append(Lexer* lexer, Token* token);
 
