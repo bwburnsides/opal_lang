@@ -1,22 +1,23 @@
 #include <stdlib.h>
 #include "visitor.h"
+#include <stdio.h>
 
 void* visit(ExprVisitor* self, Expr* expr) {
-    return expr->accept(expr, self);
+    return expr->class->accept(expr, self);
 }
 
 void* visit_binary_expr(ExprVisitor* self, BinaryExpr* expr) {
-    return self->klass.binary_expr(self, expr);
+    return self->class->binary_expr(self, expr);
 }
 
 void* visit_grouping_expr(ExprVisitor* self, GroupingExpr* expr) {
-    return self->klass.grouping_expr(self, expr);
+    return self->class->grouping_expr(self, expr);
 }
 
 void* visit_literal_expr(ExprVisitor* self, LiteralExpr* expr) {
-    return self->klass.literal_expr(self, expr);
+    return self->class->literal_expr(self, expr);
 }
 
 void* visit_unary_expr(ExprVisitor* self, UnaryExpr* expr) {
-    return self->klass.unary_expr(self, expr);
+    return self->class->unary_expr(self, expr);
 }

@@ -8,8 +8,17 @@
 
 #include "expression.h"
 
+#include <signal.h>
+
+void segvHandler( int s ) 
+{
+  printf( "Segmentation Fault\n" );
+  exit( EXIT_FAILURE );
+}
+
 int main(int argc, char* argv[]) {
-	Token* left_lit_tok = token_init(Token_BinIntegerLiteral, "4");
+	signal( SIGSEGV, segvHandler );
+	Token* left_lit_tok = token_init(Token_BinIntegerLiteral, "9");
 	LiteralExpr *left_lit_expr = literalexpr_init(left_lit_tok);
 
 	Token* right_lit_tok = token_init(Token_BinIntegerLiteral, "5");
@@ -21,8 +30,8 @@ int main(int argc, char* argv[]) {
 		(Expr*) left_lit_expr, operator, (Expr*) right_lit_expr
 	);
 
-	ExprVisitor printer = {PrintExprVisitorClass};
-	visit_binary_expr(&printer, bin_expr);
+	PrintExprVisitor* printer = printvisitor_init();
+	visit((ExprVisitor*) printer, (Expr*) bin_expr);
 
 	return EXIT_SUCCESS;
 }

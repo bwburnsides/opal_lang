@@ -10,10 +10,10 @@ OBJ := $(SRC:$(SRC_DIR)/%.c=$(BIN_DIR)/%.o)
 all: $(EXE)
 
 $(EXE): $(OBJ) | $(BIN_DIR)
-	gcc $^ -o $@
+	gcc $^ -o $@ -g
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c | $(BIN_DIR)
-	gcc -c $< -o $@
+	gcc -c $< -o $@ -g
 
 $(BIN_DIR):
 	mkdir $@

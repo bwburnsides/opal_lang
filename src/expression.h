@@ -5,24 +5,35 @@
 #include "visitor.h"
 
 typedef struct ExprVisitor_t ExprVisitor;
+typedef struct Expr_t Expr;
 
 typedef enum ExprKind_t {
     BinaryExprKind,
     GroupingExprKind,
     LiteralExprKind,
-    UnaryExprKind
+    UnaryExprKind,
 } ExprKind;
 
-typedef struct Expr_t Expr;
-
-typedef struct Expr_t {
+typedef struct ExprClass_t {
     ExprKind kind;
     void* (*accept)(Expr* self, ExprVisitor* visitor);
+} ExprClass;
+
+ExprClass BinaryExprClass;
+ExprClass GroupingExprClass;
+ExprClass LiteralExprClass;
+ExprClass UnaryExprClass;
+
+typedef struct Expr_t Expr;
+typedef struct Expr_t {
+    ExprClass* class;
 } Expr;
+
+void* expr_accept(Expr* self, ExprVisitor* visitor);
 
 // -----------------------------------------
 
-typedef struct BinaryExpr_t { Expr base;
+typedef struct BinaryExpr_t { ExprClass* class;
     Expr* left;
     Token* operator;
     Expr* right;
@@ -33,7 +44,7 @@ void* binaryexpr_accept(Expr* self, ExprVisitor* visitor);
 
 // -----------------------------------------
 
-typedef struct GroupingExpr_t { Expr base;
+typedef struct GroupingExpr_t { ExprClass* class;
     Expr* expr;
 } GroupingExpr;
 
@@ -42,7 +53,7 @@ void* groupingexpr_accept(Expr* self, ExprVisitor* visitor);
 
 // -----------------------------------------
 
-typedef struct LiteralExpr_t { Expr base;
+typedef struct LiteralExpr_t { ExprClass* class;
     Token* value;
 } LiteralExpr;
 
@@ -51,7 +62,7 @@ void* literalexpr_accept(Expr* self, ExprVisitor* visitor);
 
 // -----------------------------------------
 
-typedef struct UnaryExpr_t { Expr base;
+typedef struct UnaryExpr_t { ExprClass* class;
     Token* operator;
     Expr* right;
 } UnaryExpr;

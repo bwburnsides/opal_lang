@@ -12,7 +12,6 @@ typedef struct UnaryExpr_t UnaryExpr;
 typedef struct ExprVisitor_t ExprVisitor;
 
 typedef struct ExprVisitorClass_t {
-    void* (*visit)(ExprVisitor* self, Expr* expr);
     void* (*binary_expr)(ExprVisitor* self, BinaryExpr* expr);
     void* (*grouping_expr)(ExprVisitor* self, GroupingExpr* expr);
     void* (*literal_expr)(ExprVisitor* self, LiteralExpr* expr);
@@ -20,7 +19,7 @@ typedef struct ExprVisitorClass_t {
 } ExprVisitorClass;
 
 typedef struct ExprVisitor_t {
-    ExprVisitorClass klass;
+    ExprVisitorClass* class;
 } ExprVisitor;
 
 void* visit(ExprVisitor* self, Expr* expr);
