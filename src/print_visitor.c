@@ -21,7 +21,7 @@ ExprVisitorClass PrintExprVisitorClass = {
     &_print_unary_expr,
 };
 
-PrintExprVisitor* printvisitor_init() {
+PrintExprVisitor* print_visitor_init() {
     PrintExprVisitor* visitor = malloc(sizeof(PrintExprVisitor));
     if (visitor != NULL) {
         visitor->class = &PrintExprVisitorClass;
@@ -29,6 +29,10 @@ PrintExprVisitor* printvisitor_init() {
     }
 
     return visitor;
+}
+
+void print_visitor_free(PrintExprVisitor* self) {
+    free(self);
 }
 
 static void* _print_binary_expr(ExprVisitor* self, BinaryExpr* expr) {

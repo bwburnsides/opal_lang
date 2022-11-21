@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include "token.h"
 
+// TODO: Only public members of this header should be listed in the header. Move struct
+// implementations (where necessary) and other declarations into *.c as static functions.
+
 #define MAX_INT_LENGTH (100)
 #define INIT_TOKEN_CAP (1000)
 

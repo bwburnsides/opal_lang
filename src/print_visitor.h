@@ -4,6 +4,8 @@
 #include "visitor.h"
 
 typedef struct PrintExprVisitor_t PrintExprVisitor;
-PrintExprVisitor* printvisitor_init();
+
+PrintExprVisitor* print_visitor_init();
+void print_visitor_free(PrintExprVisitor* self);
 
 #endif

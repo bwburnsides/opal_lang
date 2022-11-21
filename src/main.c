@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
 		(Expr*) left_lit_expr, operator, (Expr*) right_lit_expr
 	);
 
-	PrintExprVisitor* printer = printvisitor_init();
+	PrintExprVisitor* printer = print_visitor_init();
 	visit((ExprVisitor*) printer, (Expr*) bin_expr);
 
 	return EXIT_SUCCESS;
