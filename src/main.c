@@ -8,16 +8,8 @@
 
 #include "expression.h"
 
-#include <signal.h>
-
-void segvHandler( int s ) 
-{
-  printf( "Segmentation Fault\n" );
-  exit( EXIT_FAILURE );
-}
 
 int main(int argc, char* argv[]) {
-	signal( SIGSEGV, segvHandler );
 	Token* left_lit_tok = token_init(Token_BinIntegerLiteral, "9");
 	LiteralExpr *left_lit_expr = literalexpr_init(left_lit_tok);
 
