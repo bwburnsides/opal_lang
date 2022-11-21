@@ -1,44 +1,38 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
+#include "utils.h"
 #include "lexer.h"
+#include "parser.h"
+#include "print_visitor.h"
 
-void usage() {
-	fprintf(stderr, "usage: opal <input_fname>\n");
+#include "expression.h"
+
+int main(int argc, char* argv[]) {
+	Token* left_lit_tok = token_init(Token_BinIntegerLiteral, "4");
+	LiteralExpr *left_lit_expr = literalexpr_init(left_lit_tok);
+
+	Token* right_lit_tok = token_init(Token_BinIntegerLiteral, "5");
+	LiteralExpr *right_lit_expr = literalexpr_init(right_lit_tok);
+
+	Token* operator = token_init(Token_Plus, "+");
+
+	BinaryExpr *bin_expr = binaryexpr_init(
+		(Expr*) left_lit_expr, operator, (Expr*) right_lit_expr
+	);
+
+	ExprVisitor printer = {PrintExprVisitorClass};
+	visit_binary_expr(&printer, bin_expr);
+
+	return EXIT_SUCCESS;
 }
 
-char* read_input(char* fname) {
-	char* buffer = 0;
-	long length;
-	FILE* f = fopen(fname, "rb");
-
-	if (f == NULL) {
-		return NULL;
-	}
-
-	fseek(f, 0, SEEK_END);
-	length = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	buffer = malloc((length + 1) * sizeof(char));
-	buffer[length] = '\0';
-
-	if (buffer == NULL) {
-		fclose(f);
-		return NULL;
-	}
-
-	fread(buffer, sizeof(char), length, f);
-	fclose(f);
-
-	return buffer;
-}
-
-int main(int argc, char** argv) {
+int real_main(int argc, char* argv[]) {
 	char* fname;
 	char* input;
 	Token* token;
 	Lexer* lexer;
+	Parser* parser;
 
 	if (argc < 2) {
 		usage();
@@ -66,6 +60,7 @@ int main(int argc, char** argv) {
 		token = lexer_consume(lexer);
 		if (token == NULL) {
 			printf("NULL Token\n");
+			break;
 		}
 		if (token->kind == Token_EOF) {
 			break;
