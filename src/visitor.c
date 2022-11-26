@@ -18,6 +18,10 @@ void* visit_literal_expr(ExprVisitor* self, LiteralExpr* expr) {
     return self->class->literal_expr(self, expr);
 }
 
+void* visit_identifier_expr(ExprVisitor* self, IdentifierExpr* expr) {
+    return self->class->identifier_expr(self, expr);
+}
+
 void* visit_unary_expr(ExprVisitor* self, UnaryExpr* expr) {
     return self->class->unary_expr(self, expr);
 }

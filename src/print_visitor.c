@@ -7,7 +7,9 @@
 static void* _print_binary_expr(ExprVisitor* self, BinaryExpr* expr);
 static void* _print_grouping_expr(ExprVisitor* self, GroupingExpr* expr);
 static void* _print_literal_expr(ExprVisitor* self, LiteralExpr* expr);
+static void* _print_identifier_expr(ExprVisitor* self, IdentifierExpr* expr);
 static void* _print_unary_expr(ExprVisitor* self, UnaryExpr* expr);
+
 static void _print_indention(ExprVisitor* self);
 
 typedef struct PrintExprVisitor_t {
@@ -19,6 +21,7 @@ ExprVisitorClass PrintExprVisitorClass = {
     &_print_binary_expr,
     &_print_grouping_expr,
     &_print_literal_expr,
+    &_print_identifier_expr,
     &_print_unary_expr,
 };
 
@@ -69,6 +72,11 @@ static void* _print_grouping_expr(ExprVisitor* self, GroupingExpr* expr) {
 
 static  void* _print_literal_expr(ExprVisitor* self, LiteralExpr* expr) {
     printf("LiteralExpr: %s", expr->value->value);
+    return NULL;
+}
+
+static void* _print_identifier_expr(ExprVisitor* self, IdentifierExpr* expr) {
+    printf("IdentifierExpr: %s", expr->value->value);
     return NULL;
 }
 

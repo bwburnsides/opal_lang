@@ -74,6 +74,27 @@ void* literalexpr_accept(Expr* self, ExprVisitor* visitor) {
 
 // -----------------------------------------
 
+ExprClass IdentifierExprClass = {
+    IdentifierExprKind,
+    &identifierexpr_accept
+};
+
+IdentifierExpr* identifierexpr_init(Token* value) {
+    IdentifierExpr* expr = malloc(sizeof(IdentifierExpr));
+    if (expr != NULL) {
+        expr->class = &IdentifierExprClass;
+        expr->value = value;
+    }
+
+    return expr;
+}
+
+void* identifierexpr_accept(Expr* self, ExprVisitor* visitor) {
+    return visitor->class->identifier_expr(visitor, (IdentifierExpr*) self);
+}
+
+// -----------------------------------------
+
 ExprClass UnaryExprClass = {
     UnaryExprKind,
     &unaryexpr_accept

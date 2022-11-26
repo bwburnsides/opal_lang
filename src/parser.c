@@ -181,12 +181,18 @@ ParseResult parser_primary(Parser* self) {
         return result;
     }
 
+    if (parser_match(self, 1, Token_Identifier)) {
+        result.value.match = (Expr*) identifierexpr_init(parser_previous(self));
+        return result;
+    }
+
     if (parser_match(self, 1, Token_LParen)) {
         result = parser_expression(self);
         if (result.kind == ParseResult_Error) {
             return result;
         }
         expr = result.value.match;
+
         if (
             parser_consume(
                 self,

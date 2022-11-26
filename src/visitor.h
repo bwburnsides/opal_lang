@@ -10,6 +10,7 @@ typedef struct Expr_t Expr;
 typedef struct BinaryExpr_t BinaryExpr;
 typedef struct GroupingExpr_t GroupingExpr;
 typedef struct LiteralExpr_t LiteralExpr;
+typedef struct IdentifierExpr_t IdentifierExpr;
 typedef struct UnaryExpr_t UnaryExpr;
 
 typedef struct ExprVisitor_t ExprVisitor;
@@ -18,6 +19,7 @@ typedef struct ExprVisitorClass_t {
     void* (*binary_expr)(ExprVisitor* self, BinaryExpr* expr);
     void* (*grouping_expr)(ExprVisitor* self, GroupingExpr* expr);
     void* (*literal_expr)(ExprVisitor* self, LiteralExpr* expr);
+    void* (*identifier_expr)(ExprVisitor* self, IdentifierExpr* expr);
     void* (*unary_expr)(ExprVisitor* self, UnaryExpr* expr);
 } ExprVisitorClass;
 
@@ -29,6 +31,7 @@ void* visit(ExprVisitor* self, Expr* expr);
 void* visit_binary_expr(ExprVisitor* self, BinaryExpr* expr);
 void* visit_grouping_expr(ExprVisitor* self, GroupingExpr* expr);
 void* visit_literal_expr(ExprVisitor* self, LiteralExpr* expr);
+void* visit_identifier_expr(ExprVisitor* self, IdentifierExpr* expr);
 void* visit_unary_expr(ExprVisitor* self, UnaryExpr* expr);
 
 #endif
