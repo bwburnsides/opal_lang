@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include "visitor.h"
 #include "print_visitor.h"
 
 
@@ -50,13 +51,19 @@ static void* _print_binary_expr(ExprVisitor* self, BinaryExpr* expr) {
     _print_indention(self);
 
     visit(self, expr->right);
-    printf("\n");
 
     ((PrintExprVisitor*) self)->indent_level--;
     return NULL;
 }
 
 static void* _print_grouping_expr(ExprVisitor* self, GroupingExpr* expr) {
+    ((PrintExprVisitor*) self)->indent_level++;
+
+    printf("GroupingExpr:\n");
+    _print_indention(self);
+    visit(self, expr->expr);
+
+    ((PrintExprVisitor*) self)->indent_level--;
     return NULL;
 }
 
@@ -66,6 +73,15 @@ static  void* _print_literal_expr(ExprVisitor* self, LiteralExpr* expr) {
 }
 
 static void* _print_unary_expr(ExprVisitor* self, UnaryExpr* expr) {
+    ((PrintExprVisitor*) self)->indent_level++;
+
+    printf("UnaryExpr:\n");
+    _print_indention(self);
+    printf("Operator: %s\n", expr->operator->value);
+    _print_indention(self);
+    visit(self, expr->right);
+
+    ((PrintExprVisitor*) self)->indent_level--;
     return NULL;
 }
 

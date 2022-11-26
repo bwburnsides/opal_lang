@@ -28,20 +28,20 @@ typedef struct ParseResult_t {
 
     union {
         ParseError error;
-        Token* match;
+        Expr* match;
     } value;
 } ParseResult;
 
 Parser* parser_init(Token** tokens);
 void parser_free(Parser* self);
 
-Expr* parser_expression(Parser* self);
-Expr* parser_equality(Parser* self);
-Expr* parser_comparison(Parser* self);
-Expr* parser_term(Parser* self);
-Expr* parser_factor(Parser* self);
-Expr* parser_unary(Parser* self);
-Expr* parser_primary(Parser* self);
+ParseResult parser_expression(Parser* self);
+ParseResult parser_equality(Parser* self);
+ParseResult parser_comparison(Parser* self);
+ParseResult parser_term(Parser* self);
+ParseResult parser_factor(Parser* self);
+ParseResult parser_unary(Parser* self);
+ParseResult parser_primary(Parser* self);
 
 bool parser_match(Parser* self, size_t count, ...);
 bool parser_check(Parser* self, TokenKind kind);

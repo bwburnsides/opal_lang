@@ -8,8 +8,8 @@
 
 #define KEYWORD_TOKEN_COUNT (22)
 
-#define HEX_CHARS "0123456789abcdef"
-#define BIN_CHARS "01"
+#define HEX_CHARS "0123456789abcdefABCDEF_"
+#define BIN_CHARS "01_"
 
 typedef enum TokenKind_t {
 	Token_Keyword,

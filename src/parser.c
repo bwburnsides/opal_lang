@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -10,6 +11,7 @@ Parser* parser_init(Token** tokens) {
         return NULL;
     }
     parser->tokens = tokens;
+    parser->current = 0;
     return parser;
 }
 
@@ -17,12 +19,16 @@ void parser_free(Parser* self) {
     free(self);
 }
 
-Expr* parser_expression(Parser* self) {
+ParseResult parser_expression(Parser* self) {
     return parser_equality(self);
 }
 
-Expr* parser_equality(Parser* self) {
-    Expr* expr = parser_comparison(self);
+ParseResult parser_equality(Parser* self) {
+    ParseResult result = parser_comparison(self);
+    if (result.kind == ParseResult_Error) {
+        return result;
+    }
+    Expr* expr = result.value.match;
     Token* operator;
     Expr* right;
 
@@ -33,13 +39,25 @@ Expr* parser_equality(Parser* self) {
         )
     ) {
         operator = parser_previous(self);
-        right = parser_comparison(self);
+        result = parser_comparison(self);
+        if (result.kind == ParseResult_Error) {
+            return result;
+        }
+        right = result.value.match;
         expr = (Expr*) binaryexpr_init(expr, operator, right);
     }
+
+    result.value.match = expr;
+    return result;
 }
 
-Expr* parser_comparison(Parser* self) {
-    Expr* expr = parser_term(self);
+ParseResult parser_comparison(Parser* self) {
+    ParseResult result = parser_term(self);
+    if (result.kind == ParseResult_Error) {
+        return result;
+    }
+
+    Expr* expr = result.value.match;
     Token* operator;
     Expr* right;
 
@@ -52,15 +70,26 @@ Expr* parser_comparison(Parser* self) {
         )
     ) {
         operator = parser_previous(self);
-        right = parser_term(self);
+        result = parser_term(self);
+        if (result.kind == ParseResult_Error) {
+            return result;
+        }
+
+        right = result.value.match;
+
         expr = (Expr*) binaryexpr_init(expr, operator, right);
     }
 
-    return expr;
+    result.value.match = expr;
+    return result;
 }
 
-Expr* parser_term(Parser* self) {
-    Expr* expr = parser_factor(self);
+ParseResult parser_term(Parser* self) {
+    ParseResult result = parser_factor(self);
+    if (result.kind == ParseResult_Error) {
+        return result;
+    }
+    Expr* expr = result.value.match;
     Token* operator;
     Expr* right;
 
@@ -71,15 +100,24 @@ Expr* parser_term(Parser* self) {
         )
     ) {
         operator = parser_previous(self);
-        right = parser_factor(self);
+        result = parser_factor(self);
+        if (result.kind == ParseResult_Error) {
+            return result;
+        }
+        right = result.value.match;
         expr = (Expr*) binaryexpr_init(expr, operator, right);
     }
 
-    return expr;
+    result.value.match = expr;
+    return result;
 }
 
-Expr* parser_factor(Parser* self) {
-    Expr* expr = parser_unary(self);
+ParseResult parser_factor(Parser* self) {
+    ParseResult result = parser_unary(self);
+    if (result.kind == ParseResult_Error) {
+        return result;
+    }
+    Expr* expr = result.value.match;
     Token* operator;
     Expr* right;
 
@@ -90,14 +128,20 @@ Expr* parser_factor(Parser* self) {
         )
     ) {
         operator = parser_previous(self);
-        right = parser_unary(self);
+        result = parser_unary(self);
+        if (result.kind == ParseResult_Error) {
+            return result;
+        }
+        right = result.value.match;
         expr = (Expr*) binaryexpr_init(expr, operator, right);
     }
 
-    return expr;
+    result.value.match = expr;
+    return result;
 }
 
-Expr* parser_unary(Parser* self) {
+ParseResult parser_unary(Parser* self) {
+    ParseResult result;
     Token* operator;
     Expr* right;
 
@@ -108,15 +152,23 @@ Expr* parser_unary(Parser* self) {
         )
     ) {
         operator = parser_previous(self);
-        right = parser_unary(self);
-        return (Expr*) unaryexpr_init(operator, right);
+        result = parser_unary(self);
+        if (result.kind == ParseResult_Error) {
+            return result;
+        }
+        right = result.value.match;
+        result.value.match = (Expr*) unaryexpr_init(operator, right);
+        return result;
     }
 
     return parser_primary(self);
 }
 
-Expr* parser_primary(Parser* self) {
+ParseResult parser_primary(Parser* self) {
+    ParseResult result;
     Expr* expr;
+
+    result.kind = ParseResult_Match;
 
     if (
         parser_match(self, 3,
@@ -125,13 +177,27 @@ Expr* parser_primary(Parser* self) {
             Token_DecIntegerLiteral
         )
     ) {
-        return (Expr*) literalexpr_init(parser_previous(self));
+        result.value.match = (Expr*) literalexpr_init(parser_previous(self));
+        return result;
     }
 
     if (parser_match(self, 1, Token_LParen)) {
-        expr = parser_expression(self);
-        parser_consume(self, Token_RParen, "Expect ')' after expression.");
-        return (Expr*) groupingexpr_init(expr);
+        result = parser_expression(self);
+        if (result.kind == ParseResult_Error) {
+            return result;
+        }
+        expr = result.value.match;
+        if (
+            parser_consume(
+                self,
+                Token_RParen,
+                "Expect ')' after expression."
+            ).kind == ParseResult_Error
+        ) {
+            return result;
+        }
+        result.value.match = (Expr*) groupingexpr_init(expr);
+        return result;
     }
 }
 
@@ -143,7 +209,6 @@ bool parser_match(Parser* self, size_t count, ...) {
     va_start(args, count);
     for (int i = 0; i < count; i++) {
         kind = va_arg(args, TokenKind);
-
         if (parser_check(self, kind)) {
             parser_advance(self);
             matched = true;
@@ -188,7 +253,7 @@ ParseResult parser_consume(Parser* self, TokenKind kind, char* msg) {
 
     if (parser_check(self, kind)) {
         result.kind = ParseResult_Match;
-        result.value.match = parser_advance(self);
+        result.value.match = (Expr*) parser_advance(self);
         return result;
     }
 

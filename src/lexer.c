@@ -10,6 +10,10 @@
 
 static bool ishex(char c);
 static bool isbin(char c);
+static bool isdec(char c);
+static Token* lexer_collect_hex_integer(Lexer* lexer, char* buffer);
+static Token* lexer_collect_bin_integer(Lexer* lexer, char* buffer);
+static Token* lexer_collect_dec_integer(Lexer* lexer, char* buffer);
 
 Lexer* lexer_init(char* content) {
 	Lexer* lexer = malloc(sizeof(Lexer));
@@ -45,8 +49,8 @@ void lexer_free(Lexer* lexer) {
 
 int lexer_print(Lexer* lexer) {
 	return printf(
-		"Lexer(\n   index = %i\n   current = \'%c\'\n   content = \"%s\"\n   capacity = %i\n   count = %i\n)\n",
-		lexer->index, lexer->current, lexer->content, lexer->capacity, lexer->count
+		"Lexer(\n   index = %i\n   current = \'%c\'\n   capacity = %i\n   count = %i\n)\n",
+		lexer->index, lexer->current, lexer->capacity, lexer->count
 	);
 }
 
@@ -75,7 +79,6 @@ void lexer_append(Lexer* lexer, Token* token) {
 
 Token* lexer_collect_token(Lexer* lexer) {
 	Token* token;
-
 	if (lexer->current == '\0') {
 		token = malloc(sizeof(Token));
 		if (token == NULL) {
@@ -363,88 +366,87 @@ Token* lexer_collect_name(Lexer* lexer) {
 }
 
 Token* lexer_collect_integer(Lexer* lexer) {
-	char* integer = calloc(MAX_INT_LENGTH, sizeof(char));
-	if (integer == NULL) {
+	char* integer_buffer = calloc(MAX_INT_LENGTH, sizeof(char));
+	if (integer_buffer == NULL) {
 		return NULL;
 	}
-	memset(integer, '\0', sizeof(char));
+	memset(integer_buffer, '\0', sizeof(char));
 
-	int idx = 0;
-	char peek = lexer_peek(lexer);
+	char c = lexer_peek(lexer);
+
+	if (lexer->current == '0' && c == 'x') {
+		lexer_advance(lexer);
+		lexer_advance(lexer);
+		return lexer_collect_hex_integer(lexer, integer_buffer);	
+	}
+
+	if (lexer->current == '0' && c == 'b') {
+		lexer_advance(lexer);
+		lexer_advance(lexer);
+		return lexer_collect_bin_integer(lexer, integer_buffer);
+	}
+
+	return lexer_collect_dec_integer(lexer, integer_buffer);
+}
+
+static Token* lexer_collect_hex_integer(Lexer* lexer, char* buffer) {
+	// Lexer should be pointing at the hex digit immediately following the 'x' in the literal
 
 	Token* token = malloc(sizeof(Token));
 	if (token == NULL) {
 		return NULL;
 	}
-	token->value = integer;
-	token->value_is_dynamic = true;
 
-	if (lexer->current == '0') {
-		switch (peek) {
-			case 'x':
-				lexer_advance(lexer);
-				lexer_advance(lexer);
+	int idx = 0;
 
-				token->value[idx++] = '0';
-				token->value[idx++] = 'x';
-
-				for (idx = 2; ishex(lexer->current) && idx < MAX_INT_LENGTH; idx++) {
-					token->value[idx] = lexer->current;
-					lexer_advance(lexer);
-				}
-				if (lexer->current != ' ') {
-					goto cleanup;
-				}
-
-				token->kind = Token_HexIntegerLiteral;
-
-				return token;
-			case 'b':
-				lexer_advance(lexer);
-				lexer_advance(lexer);
-
-				token->value[idx++] = '0';
-				token->value[idx++] = 'b';
-
-				for (idx = 2; ishex(lexer->current) && idx < MAX_INT_LENGTH; idx++) {
-					token->value[idx] = lexer->current;
-					lexer_advance(lexer);
-				}
-				if (lexer->current != ' ') {
-					goto cleanup;
-				}
-
-				token->kind = Token_BinIntegerLiteral;
-
-				return token;
-
-			default:
-				if (isspace(peek) || peek == ';') {
-					lexer_advance(lexer);
-					token->value[idx++] = '0';
-					token->kind = Token_DecIntegerLiteral;
-					return token;
-				}
-
-				goto cleanup;
-		}
-	}
-
-	for (idx = 0; isdigit(lexer->current) && idx < MAX_INT_LENGTH; idx++) {
-		token->value[idx] = lexer->current;
+	while (ishex(lexer->current) && idx < MAX_INT_LENGTH) {
+		buffer[idx++] = lexer->current;
 		lexer_advance(lexer);
 	}
-	if (!isspace(lexer->current)) {
-		goto cleanup;
+
+	token->kind = Token_HexIntegerLiteral;
+	token->value = buffer;
+	token->value_is_dynamic = true;
+
+	return token;
+}
+
+static Token* lexer_collect_bin_integer(Lexer* lexer, char* buffer) {
+	Token* token = malloc(sizeof(Token));
+	if (token == NULL) {
+		return NULL;
+	}
+
+	int idx = 0;
+	while (isbin(lexer->current) && idx < MAX_INT_LENGTH) {
+		buffer[idx++] = lexer->current;
+		lexer_advance(lexer);
+	}
+
+	token->kind = Token_BinIntegerLiteral;
+	token->value = buffer;
+	token->value_is_dynamic = true;
+
+	return token;
+}
+
+static Token* lexer_collect_dec_integer(Lexer* lexer, char* buffer) {
+	Token* token = malloc(sizeof(Token));
+	if (token == NULL) {
+		return NULL;
+	}
+
+	int idx = 0;
+	while (isdec(lexer->current) && idx < MAX_INT_LENGTH) {
+		buffer[idx++] = lexer->current;
+		lexer_advance(lexer);
 	}
 
 	token->kind = Token_DecIntegerLiteral;
+	token->value = buffer;
+	token->value_is_dynamic = true;
 
 	return token;
-
-	cleanup:
-		token_free(token);
-		return NULL;
 }
 
 static bool ishex(char c) {
@@ -461,6 +463,16 @@ static bool isbin(char c) {
 	char* bin = "01_";
 	for (int i = 0; i < 3; i++) {
 		if (c == bin[i]) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool isdec(char c) {
+	char* dec = "0123456789_";
+	for (int i = 0; i < 10; i++) {
+		if (c == dec[i]) {
 			return true;
 		}
 	}

@@ -6,53 +6,19 @@
 #include "parser.h"
 #include "print_visitor.h"
 
-#include "expression.h"
+#include <signal.h>
 
 
 int main(int argc, char* argv[]) {
-	Token* left_lit_tok = token_init(Token_BinIntegerLiteral, "9");
-	LiteralExpr *left_lit_expr = literalexpr_init(left_lit_tok);
+	signal(SIGSEGV, segfault_handler);
 
-	Token* right_lit_tok = token_init(Token_BinIntegerLiteral, "5");
-	LiteralExpr *right_lit_expr = literalexpr_init(right_lit_tok);
-
-	Token* operator = token_init(Token_Plus, "+");
-
-	BinaryExpr *bin_expr = binaryexpr_init(
-		(Expr*) left_lit_expr, operator, (Expr*) right_lit_expr
-	);
-
-	PrintExprVisitor* printer = print_visitor_init();
-	visit((ExprVisitor*) printer, (Expr*) bin_expr);
-
-	return EXIT_SUCCESS;
-}
-
-int real_main(int argc, char* argv[]) {
-	char* fname;
-	char* input;
+	char* fname = parse_arguments_or_exit(argc, argv);
+	char* input = read_input_or_exit(fname);
 	Token* token;
 	Lexer* lexer;
 	Parser* parser;
 
-	if (argc < 2) {
-		usage();
-		exit(EXIT_FAILURE);
-	}
-
-	fname = argv[1];
-	if (fname == NULL) {
-		usage();
-		exit(EXIT_FAILURE);
-	}
-
-	input = read_input(fname);
-	if (input == NULL) {
-		perror("Unable to open input_fname. Received error");
-		return EXIT_FAILURE;
-	}
-
-	lexer = lexer_init((char*) input);
+	lexer = lexer_init(input);
 	if (lexer == NULL) {
 		return EXIT_FAILURE;
 	}
@@ -60,20 +26,34 @@ int real_main(int argc, char* argv[]) {
 	while (true) {
 		token = lexer_consume(lexer);
 		if (token == NULL) {
-			printf("NULL Token\n");
-			break;
+			fprintf(stderr, "NULL Token\n");
+			return EXIT_FAILURE;
 		}
+
 		if (token->kind == Token_EOF) {
 			break;
 		}
 	}
-
-	lexer_print(lexer);
-	printf("\n");
 	lexer_print_tokens(lexer);
 
-	lexer_free(lexer);
-	free(input);
+	parser = parser_init(lexer->tokens);
+	if (parser == NULL) {
+		return EXIT_FAILURE;
+	}
+
+	ParseResult result = parser_expression(parser);
+	PrintExprVisitor* AstPrinter = print_visitor_init();
+
+	if (result.kind != ParseResult_Error) {
+		printf("\nParsing was successful.\n\n");
+
+		if (AstPrinter != NULL) {
+			expr_accept(result.value.match, (ExprVisitor*) AstPrinter);
+		}
+	}
+
+	// lexer_free(lexer);
+	// free(input);
 
 	return EXIT_SUCCESS;
 }
