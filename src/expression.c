@@ -114,3 +114,32 @@ UnaryExpr* unaryexpr_init(Token* operator, Expr* right) {
 void* unaryexpr_accept(Expr* self, ExprVisitor* visitor) {
     return visitor->class->unary_expr(visitor, (UnaryExpr*) self);
 }
+
+// -----------------------------------------
+
+ExprClass CallExprClass = {
+    CallExprKind,
+    &callexpr_accept
+};
+
+CallExpr* callexpr_init(
+    Expr* callee,
+    Token* paren,
+    Expr** arguments,
+    size_t arg_count
+) {
+    CallExpr* expr = malloc(sizeof(CallExpr));
+    if (expr != NULL) {
+        expr->class = &CallExprClass;
+        expr->callee = callee;
+        expr->paren = paren;
+        expr->arguments = arguments;
+        expr->arg_count = arg_count;
+    }
+
+    return expr;
+}
+
+void* callexpr_accept(Expr* self, ExprVisitor* visitor) {
+    return visitor->class->call_expr(visitor, (CallExpr*) self);
+}

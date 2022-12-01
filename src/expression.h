@@ -16,6 +16,7 @@ typedef enum ExprKind_t {
     LiteralExprKind,
     IdentifierExprKind,
     UnaryExprKind,
+    CallExprKind,
 } ExprKind;
 
 typedef struct ExprClass_t {
@@ -28,6 +29,7 @@ ExprClass GroupingExprClass;
 ExprClass LiteralExprClass;
 ExprClass IdentifierExprClass;
 ExprClass UnaryExprClass;
+ExprClass CallExprClass;
 
 typedef struct Expr_t Expr;
 typedef struct Expr_t {
@@ -83,5 +85,17 @@ typedef struct UnaryExpr_t { ExprClass* class;
 
 UnaryExpr* unaryexpr_init(Token* operator, Expr* right);
 void* unaryexpr_accept(Expr* self, ExprVisitor* visitor);
+
+// -----------------------------------------
+
+typedef struct CallExpr_t { ExprClass* class;
+    Expr* callee;
+    Token* paren;
+    Expr** arguments;
+    size_t arg_count;
+} CallExpr;
+
+CallExpr* callexpr_init(Expr* callee, Token* paren, Expr** arguments, size_t count);
+void* callexpr_accept(Expr* self, ExprVisitor* visitor);
 
 #endif

@@ -30,10 +30,26 @@ typedef struct ParseResult_t {
         ParseError error;
         Expr* match;
     } value;
+
+    char* msg;
 } ParseResult;
 
 Parser* parser_init(Token** tokens);
 void parser_free(Parser* self);
+
+/*
+Expression => Equality;
+Equality   => Comparison (("!=" | "==") Comparison)*
+Comparison => Term ((">" | ">=" | "<" | "<=") Term)*
+Term       => Factor (("-" | "+") Factor)*
+Factor     => Unary (("*" | "/" | "%") Unary)*
+Unary      => ("!" | "-") Unary
+            | Call
+Call       => Primary ("(" Arguments? ")")*
+Primary    => Literal | Identifier | "(" Expression ")"
+
+Arguments  => Expression ("," Expression)*
+*/
 
 ParseResult parser_expression(Parser* self);
 ParseResult parser_equality(Parser* self);
@@ -41,6 +57,7 @@ ParseResult parser_comparison(Parser* self);
 ParseResult parser_term(Parser* self);
 ParseResult parser_factor(Parser* self);
 ParseResult parser_unary(Parser* self);
+ParseResult parser_call(Parser* self);
 ParseResult parser_primary(Parser* self);
 
 bool parser_match(Parser* self, size_t count, ...);

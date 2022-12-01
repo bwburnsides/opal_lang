@@ -25,3 +25,7 @@ void* visit_identifier_expr(ExprVisitor* self, IdentifierExpr* expr) {
 void* visit_unary_expr(ExprVisitor* self, UnaryExpr* expr) {
     return self->class->unary_expr(self, expr);
 }
+
+void* visit_call_expr(ExprVisitor* self, CallExpr* expr) {
+    return self->class->call_expr(self, expr);
+}
