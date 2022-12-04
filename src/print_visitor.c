@@ -15,7 +15,7 @@ static void _print_indention(ExprVisitor* self);
 static void _indent(size_t tabs);
 
 typedef struct PrintExprVisitor_t {
-    ExprVisitorClass* class;
+    ExprVisitorClass* cls;
     size_t indent_level;
 } PrintExprVisitor;
 
@@ -31,7 +31,7 @@ ExprVisitorClass PrintExprVisitorClass = {
 PrintExprVisitor* print_visitor_init() {
     PrintExprVisitor* visitor = malloc(sizeof(PrintExprVisitor));
     if (visitor != NULL) {
-        visitor->class = &PrintExprVisitorClass;
+        visitor->cls = &PrintExprVisitorClass;
         visitor->indent_level = 0;
     }
 

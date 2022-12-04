@@ -1,2 +1,3 @@
 bin/
 .vscode/
+opal_rust/target

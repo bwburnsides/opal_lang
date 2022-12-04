@@ -26,7 +26,7 @@ typedef struct ExprVisitorClass_t {
 } ExprVisitorClass;
 
 typedef struct ExprVisitor_t {
-    ExprVisitorClass* class;
+    ExprVisitorClass* cls;
 } ExprVisitor;
 
 void* visit(ExprVisitor* self, Expr* expr);

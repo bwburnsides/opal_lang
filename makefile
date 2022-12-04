@@ -13,7 +13,7 @@ $(EXE): $(OBJ) | $(BIN_DIR)
 	gcc $^ -o $@ -g
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c | $(BIN_DIR)
-	gcc -c $< -o $@ -g
+	gcc -c $< -o $@ -g -Wmissing-field-initializers
 
 $(BIN_DIR):
 	mkdir $@

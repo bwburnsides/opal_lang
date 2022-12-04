@@ -19,11 +19,11 @@ typedef enum ParseError_t {
     ParseError_UnexpectedEOF,
 } ParseError;
 
-typedef struct ParseResult_t {
+typedef struct ParseExprResult_t {
     enum {
-        ParseResult_Match,
-        ParseResult_NoMatch,
-        ParseResult_Error
+        ParseExprResult_Match,
+        ParseExprResult_NoMatch,
+        ParseExprResult_Error
     } kind;
 
     union {
@@ -32,7 +32,7 @@ typedef struct ParseResult_t {
     } value;
 
     char* msg;
-} ParseResult;
+} ParseExprResult;
 
 Parser* parser_init(Token** tokens);
 void parser_free(Parser* self);
@@ -51,14 +51,14 @@ Primary    => Literal | Identifier | "(" Expression ")"
 Arguments  => Expression ("," Expression)*
 */
 
-ParseResult parser_expression(Parser* self);
-ParseResult parser_equality(Parser* self);
-ParseResult parser_comparison(Parser* self);
-ParseResult parser_term(Parser* self);
-ParseResult parser_factor(Parser* self);
-ParseResult parser_unary(Parser* self);
-ParseResult parser_call(Parser* self);
-ParseResult parser_primary(Parser* self);
+ParseExprResult parser_expression(Parser* self);
+ParseExprResult parser_equality(Parser* self);
+ParseExprResult parser_comparison(Parser* self);
+ParseExprResult parser_term(Parser* self);
+ParseExprResult parser_factor(Parser* self);
+ParseExprResult parser_unary(Parser* self);
+ParseExprResult parser_call(Parser* self);
+ParseExprResult parser_primary(Parser* self);
 
 bool parser_match(Parser* self, size_t count, ...);
 bool parser_check(Parser* self, TokenKind kind);
@@ -66,6 +66,6 @@ Token* parser_advance(Parser* self);
 bool parser_at_end(Parser* self);
 Token* parser_peek(Parser* self);
 Token* parser_previous(Parser* self);
-ParseResult parser_consume(Parser* self, TokenKind kind, char* msg);
+ParseExprResult parser_consume(Parser* self, TokenKind kind, char* msg);
 
 #endif

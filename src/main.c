@@ -42,19 +42,16 @@ int main(int argc, char* argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	ParseResult result = parser_expression(parser);
+	ParseExprResult result = parser_expression(parser);
 	PrintExprVisitor* AstPrinter = print_visitor_init();
 
-	if (result.kind != ParseResult_Error) {
+	if (result.kind != ParseExprResult_Error) {
 		printf("\nParsing was successful.\n\n");
 
 		if (AstPrinter != NULL) {
 			expr_accept(result.value.match, (ExprVisitor*) AstPrinter);
 		}
 	}
-
-	// lexer_free(lexer);
-	// free(input);
 
 	return EXIT_SUCCESS;
 }

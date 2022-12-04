@@ -7,7 +7,7 @@
 
 #define MAX_ARGUMENT_COUNT (255)
 
-static ParseResult parser_finish_call(Parser* self, Expr* callee);
+static ParseExprResult parser_finish_call(Parser* self, Expr* callee);
 
 Parser* parser_init(Token** tokens) {
     Parser* parser = malloc(sizeof(Parser));
@@ -23,13 +23,13 @@ void parser_free(Parser* self) {
     free(self);
 }
 
-ParseResult parser_expression(Parser* self) {
+ParseExprResult parser_expression(Parser* self) {
     return parser_equality(self);
 }
 
-ParseResult parser_equality(Parser* self) {
-    ParseResult result = parser_comparison(self);
-    if (result.kind == ParseResult_Error) {
+ParseExprResult parser_equality(Parser* self) {
+    ParseExprResult result = parser_comparison(self);
+    if (result.kind == ParseExprResult_Error) {
         return result;
     }
     Expr* expr = result.value.match;
@@ -44,7 +44,7 @@ ParseResult parser_equality(Parser* self) {
     ) {
         operator = parser_previous(self);
         result = parser_comparison(self);
-        if (result.kind == ParseResult_Error) {
+        if (result.kind == ParseExprResult_Error) {
             return result;
         }
         right = result.value.match;
@@ -55,9 +55,9 @@ ParseResult parser_equality(Parser* self) {
     return result;
 }
 
-ParseResult parser_comparison(Parser* self) {
-    ParseResult result = parser_term(self);
-    if (result.kind == ParseResult_Error) {
+ParseExprResult parser_comparison(Parser* self) {
+    ParseExprResult result = parser_term(self);
+    if (result.kind == ParseExprResult_Error) {
         return result;
     }
 
@@ -75,7 +75,7 @@ ParseResult parser_comparison(Parser* self) {
     ) {
         operator = parser_previous(self);
         result = parser_term(self);
-        if (result.kind == ParseResult_Error) {
+        if (result.kind == ParseExprResult_Error) {
             return result;
         }
 
@@ -88,9 +88,9 @@ ParseResult parser_comparison(Parser* self) {
     return result;
 }
 
-ParseResult parser_term(Parser* self) {
-    ParseResult result = parser_factor(self);
-    if (result.kind == ParseResult_Error) {
+ParseExprResult parser_term(Parser* self) {
+    ParseExprResult result = parser_factor(self);
+    if (result.kind == ParseExprResult_Error) {
         return result;
     }
     Expr* expr = result.value.match;
@@ -105,7 +105,7 @@ ParseResult parser_term(Parser* self) {
     ) {
         operator = parser_previous(self);
         result = parser_factor(self);
-        if (result.kind == ParseResult_Error) {
+        if (result.kind == ParseExprResult_Error) {
             return result;
         }
         right = result.value.match;
@@ -116,9 +116,9 @@ ParseResult parser_term(Parser* self) {
     return result;
 }
 
-ParseResult parser_factor(Parser* self) {
-    ParseResult result = parser_unary(self);
-    if (result.kind == ParseResult_Error) {
+ParseExprResult parser_factor(Parser* self) {
+    ParseExprResult result = parser_unary(self);
+    if (result.kind == ParseExprResult_Error) {
         return result;
     }
     Expr* expr = result.value.match;
@@ -133,7 +133,7 @@ ParseResult parser_factor(Parser* self) {
     ) {
         operator = parser_previous(self);
         result = parser_unary(self);
-        if (result.kind == ParseResult_Error) {
+        if (result.kind == ParseExprResult_Error) {
             return result;
         }
         right = result.value.match;
@@ -144,8 +144,8 @@ ParseResult parser_factor(Parser* self) {
     return result;
 }
 
-ParseResult parser_unary(Parser* self) {
-    ParseResult result;
+ParseExprResult parser_unary(Parser* self) {
+    ParseExprResult result;
     Token* operator;
     Expr* right;
 
@@ -157,7 +157,7 @@ ParseResult parser_unary(Parser* self) {
     ) {
         operator = parser_previous(self);
         result = parser_unary(self);
-        if (result.kind == ParseResult_Error) {
+        if (result.kind == ParseExprResult_Error) {
             return result;
         }
         right = result.value.match;
@@ -168,9 +168,9 @@ ParseResult parser_unary(Parser* self) {
     return parser_call(self);
 }
 
-ParseResult parser_call(Parser* self) {
-    ParseResult result = parser_primary(self);
-    if (result.kind == ParseResult_Error) {
+ParseExprResult parser_call(Parser* self) {
+    ParseExprResult result = parser_primary(self);
+    if (result.kind == ParseExprResult_Error) {
         return result;
     }
     Expr* expr = result.value.match;
@@ -178,7 +178,7 @@ ParseResult parser_call(Parser* self) {
     while (true) {
         if (parser_match(self, 1, Token_LParen)) {
             result = parser_finish_call(self, expr);
-            if (result.kind == ParseResult_Error) {
+            if (result.kind == ParseExprResult_Error) {
                 return result;
             }
             expr = result.value.match;
@@ -190,28 +190,28 @@ ParseResult parser_call(Parser* self) {
     return result;
 }
 
-ParseResult parser_finish_call(Parser* self, Expr* callee) {
-    ParseResult result;
+ParseExprResult parser_finish_call(Parser* self, Expr* callee) {
+    ParseExprResult result;
     size_t argc = 0;
     Expr** args;
     Token* paren;
 
-    result.kind = ParseResult_Match;
+    result.kind = ParseExprResult_Match;
 
     if (!parser_check(self, Token_RParen)) {
         do {
             if (argc == MAX_ARGUMENT_COUNT) {
-                result.kind = ParseResult_Error;
+                result.kind = ParseExprResult_Error;
                 result.msg = "Maximum allowed function argument count is 255.";
             }
             argc++;
             args = realloc(args, argc);
             if (args == NULL) {
-                result.kind = ParseResult_Error;
+                result.kind = ParseExprResult_Error;
                 return result;
             }
             result = parser_expression(self);
-            if (result.kind == ParseResult_Error) {
+            if (result.kind == ParseExprResult_Error) {
                 return result;
             }
             args[argc - 1] = result.value.match;
@@ -219,22 +219,22 @@ ParseResult parser_finish_call(Parser* self, Expr* callee) {
     }
 
     result = parser_consume(self, Token_RParen, "Expect ')' after arguments.");
-    if (result.kind == ParseResult_Error) {
+    if (result.kind == ParseExprResult_Error) {
         return result;
     }
 
     paren = (Token*) result.value.match;
 
     result.value.match = (Expr*) callexpr_init(callee, paren, args, argc);
-    result.kind = ParseResult_Match;
+    result.kind = ParseExprResult_Match;
     return result;
 }
 
-ParseResult parser_primary(Parser* self) {
-    ParseResult result;
+ParseExprResult parser_primary(Parser* self) {
+    ParseExprResult result;
     Expr* expr;
 
-    result.kind = ParseResult_Match;
+    result.kind = ParseExprResult_Match;
 
     if (
         parser_match(self, 3,
@@ -254,7 +254,7 @@ ParseResult parser_primary(Parser* self) {
 
     if (parser_match(self, 1, Token_LParen)) {
         result = parser_expression(self);
-        if (result.kind == ParseResult_Error) {
+        if (result.kind == ParseExprResult_Error) {
             return result;
         }
         expr = result.value.match;
@@ -264,7 +264,7 @@ ParseResult parser_primary(Parser* self) {
                 self,
                 Token_RParen,
                 "Expect ')' after expression."
-            ).kind == ParseResult_Error
+            ).kind == ParseExprResult_Error
         ) {
             return result;
         }
@@ -320,14 +320,14 @@ Token* parser_previous(Parser* self) {
     return self->tokens[self->current - 1];
 }
 
-ParseResult parser_consume(Parser* self, TokenKind kind, char* msg) {
-    ParseResult result;
-    result.kind = ParseResult_Error;
+ParseExprResult parser_consume(Parser* self, TokenKind kind, char* msg) {
+    ParseExprResult result;
+    result.kind = ParseExprResult_Error;
     result.value.error = ParseError_UnexpectedToken;
     result.msg = msg;
 
     if (parser_check(self, kind)) {
-        result.kind = ParseResult_Match;
+        result.kind = ParseExprResult_Match;
         result.value.match = (Expr*) parser_advance(self);
         return result;
     }
