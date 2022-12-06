@@ -1,7 +1,7 @@
 pub mod lexer {
     use core::panic;
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone)]
     pub enum Keyword {
         U8,
         I8,
@@ -27,14 +27,14 @@ pub mod lexer {
         Enum,
     }
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone)]
     pub enum IntegerLiteralType {
         Decimal,
         Hexadecimal,
         Binary,
     }
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone)]
     pub enum Token {
         Keyword(Keyword),
         Identifier(String),
