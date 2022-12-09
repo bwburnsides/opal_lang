@@ -124,8 +124,8 @@ Opal is a simple imperative language targeting the BW8 architecture. It has a st
     "const" Identifier ":" Type "=" Expression ";"
 
 ### VariableDeclaration
-      Identifier ":" Type "=" Expression ";"
-    | Identifier ":" Type ";"
+      "var" Identifier ":" Type "=" Expression ";"
+    | "var" Identifier ":" Type ";"
 
 ### AssignmentStatement
     Expression AssignmentOperator Expression ";"

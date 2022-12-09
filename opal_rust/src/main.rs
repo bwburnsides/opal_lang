@@ -4,8 +4,7 @@ pub mod lexer;
 pub mod parser;
 
 use lexer::lexer::Lexer;
-use lexer::lexer::Token;
-use parser::parser::Parser;
+use parser::parser::parse;
 
 fn main() {
     let contents: Vec<char> = std::fs::read_to_string("../simple_input.opal")
@@ -13,9 +12,12 @@ fn main() {
         .chars()
         .collect();
 
-    let tokens: Vec<Token> = Lexer::new(contents).collect();
-    let statements = Parser::new(tokens).parse();
-    for statement in statements {
-        println!("{:?}", statement);
+    let tokens = Lexer::new(contents).collect();
+
+    match parse(tokens) {
+        Ok(statements) => for statement in statements {
+            println!("{:?}", statement);
+        },
+        Err(error) => println!("Received parser error: {:?}", error),
     }
 }

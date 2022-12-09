@@ -1,7 +1,7 @@
 pub mod lexer {
     use core::panic;
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Debug, Clone, Copy)]
     pub enum Keyword {
         U8,
         I8,
@@ -11,6 +11,7 @@ pub mod lexer {
         SizeOf,
         Type,
         Const,
+        Var,
         If,
         Else,
         While,
@@ -257,6 +258,7 @@ pub mod lexer {
                 "sizeof" => Some(Token::Keyword(Keyword::SizeOf)),
                 "type" => Some(Token::Keyword(Keyword::Type)),
                 "const" => Some(Token::Keyword(Keyword::Const)),
+                "var" => Some(Token::Keyword(Keyword::Var)),
                 "if" => Some(Token::Keyword(Keyword::If)),
                 "else" => Some(Token::Keyword(Keyword::Else)),
                 "while" => Some(Token::Keyword(Keyword::While)),
