@@ -17,24 +17,13 @@ fn main() {
             TokenKind::Equal,
             TokenKind::IntegerLiteral(IntegerLiteralType::Decimal, 5),
             TokenKind::SemiColon,
-            //
-            TokenKind::Keyword(Keyword::Const),
-            TokenKind::Identifier(String::from("bar")),
-            TokenKind::Colon,
-            TokenKind::Keyword(Keyword::U8),
-            TokenKind::Equal,
-            TokenKind::IntegerLiteral(IntegerLiteralType::Decimal, 5),
-            TokenKind::SemiColon,
-            //
-            TokenKind::Keyword(Keyword::Type),
-            TokenKind::Identifier(String::from("baz")),
-            TokenKind::Equal,
-            TokenKind::Keyword(Keyword::U8),
-            TokenKind::SemiColon,
         ]
     );
 
-    for stmt in parse(tokens).unwrap() {
-        println!("{:?}", stmt);
+    match parse(tokens) {
+        Ok(stmts) => for stmt in stmts {
+            println!("{:?}", stmt);
+        },
+        Err(error) => println!("{:?}", error),
     }
 }

@@ -3,8 +3,23 @@ use crate::compiler::OptionResult;
 use super::{Token, Keyword, TokenKind, TokenPosition, IntegerLiteralType};
 
 #[derive(Debug)]
-pub enum ParserError {
-    UnexpectedToken,
+pub struct ParserError {
+    msg: String,
+    line: usize,
+    column: usize,
+}
+
+impl ParserError {
+    pub fn unexpected_token(parser: &Parser) -> Self {
+        Self {
+            msg: format!(
+                "Unexpected token {:?}",
+                parser.input.clone().prev().unwrap_or_default()
+            ),
+            line: parser.input.clone().prev().unwrap_or_default().position.start.line,
+            column: parser.input.clone().prev().unwrap_or_default().position.start.column,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -63,11 +78,13 @@ pub struct Field {
 pub type ParserResult<T> = OptionResult<(T, TokenPosition), ParserError>;
 pub type ParserOption<T> = Option<(T, TokenPosition)>;
 
+#[derive(Clone)]
 struct TokenInput {
     tokens: Vec<Token>,
     index: usize,
     stack: Vec<usize>,
 }
+
 impl TokenInput {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -96,6 +113,24 @@ impl TokenInput {
             let result = self.tokens[self.index].clone();
             self.index += 1;
             Some(result)
+        }
+    }
+
+    pub fn current(self) -> Option<Token> {
+        if self.index >= self.tokens.len() {
+            None
+        } else {
+            Some(self.tokens[self.index].clone())
+        }
+    }
+
+    pub fn prev(self) -> Option<Token> {
+        if self.index <= 1{
+            None
+        } else if (self.index - 1) >= self.tokens.len() {
+            None
+        } else {
+            Some(self.tokens[self.index - 1].clone())
         }
     }
 }
@@ -179,27 +214,27 @@ impl Parser {
 
         // Identifier ":" Type
         let field = match self.parse_field() {
-            ParserResult::None => return ParserResult::None,
+            ParserResult::None => return ParserResult::Err(ParserError::unexpected_token(self)),
             ParserResult::Err(error) => return ParserResult::Err(error),
             ParserResult::Some((field, _)) => field,
         };
 
         // "="
         match self.parse_token(TokenKind::Equal) {
-            ParserOption::None => return ParserResult::None,
+            ParserOption::None => return ParserResult::Err(ParserError::unexpected_token(self)),
             ParserOption::Some(_) => (),
         }
 
         // Expression
         let expression = match self.parse_expression() {
-            ParserResult::None => return ParserResult::None,
+            ParserResult::None => return ParserResult::Err(ParserError::unexpected_token(self)),
             ParserResult::Err(error) => return ParserResult::Err(error),
             ParserResult::Some((expression, _)) => expression,
         };
 
         // ";"
         let position = match self.parse_token(TokenKind::SemiColon) {
-            ParserOption::None => return ParserResult::None,
+            ParserOption::None => return ParserResult::Err(ParserError::unexpected_token(self)),
             ParserOption::Some((_, remaining)) => remaining,
         };
 
@@ -254,7 +289,7 @@ impl Parser {
             }
 
             match self.parse_token(TokenKind::SemiColon) {
-                ParserOption::None => return ParserResult::Err(ParserError::UnexpectedToken),
+                ParserOption::None => return ParserResult::Err(ParserError::unexpected_token(self)),
                 ParserOption::Some(_) => (),
             }
         }

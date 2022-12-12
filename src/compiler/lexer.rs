@@ -1,13 +1,13 @@
 use crate::compiler::OptionResult;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TextPosition {
     pub absolute: usize,
     pub line: usize,
     pub column: usize,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TokenPosition {
     pub start: TextPosition,
     pub end: TextPosition,
@@ -47,7 +47,7 @@ pub enum IntegerLiteralType {
     Binary,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub position: TokenPosition,
@@ -68,6 +68,18 @@ impl Token {
         kinds.iter().map(
             |kind| Self::from_kind(kind.clone())
         ).collect()
+    }
+}
+
+impl Default for Token {
+    fn default() -> Self {
+        Self {
+            kind: TokenKind::Illegal,
+            position: TokenPosition {
+                start: TextPosition { absolute: 0, line: 0, column: 0 },
+                end: TextPosition { absolute: 0, line: 0, column: 0 }
+            },
+        }
     }
 }
 
@@ -124,8 +136,10 @@ pub enum TokenKind {
 }
 
 #[derive(Debug)]
-pub enum LexerError {
-    UnexpectedCharacter{line: usize, column: usize},
+pub struct LexerError {
+    msg: String,
+    line: usize,
+    column: usize,
 }
 
 pub type LexerResult<T> = OptionResult<T, LexerError>;
@@ -189,9 +203,13 @@ impl Lexer {
         }
 
         LexerResult::Err(
-            LexerError::UnexpectedCharacter {
+            LexerError {
+                msg: format!(
+                    "Unrecognized character '{}'",
+                    self.current().unwrap(),
+                ),
                 line: self.position.line,
-                column: self.position.column
+                column: self.position.column,
             }
         )
     }
