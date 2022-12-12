@@ -26,12 +26,19 @@ pub struct StructUnionDeclaration {
 }
 
 #[derive(Debug)]
+pub struct TypeDeclaration {
+    identifier: String,
+    ty: Type,
+}
+
+#[derive(Debug)]
 pub enum Statement {
     ConstantDeclaration(ConstantVariableDeclaration),
     VariableDeclaration(ConstantVariableDeclaration),
     FunctionDeclaration(FunctionDeclaration),
     StructDeclaration(StructUnionDeclaration),
     UnionDeclaration(StructUnionDeclaration),
+    TypeDeclaration(TypeDeclaration),
 }
 
 #[derive(Debug)]
@@ -54,6 +61,7 @@ pub struct Field {
 }
 
 pub type ParserResult<T> = OptionResult<(T, TokenPosition), ParserError>;
+pub type ParserOption<T> = Option<(T, TokenPosition)>;
 
 struct TokenInput {
     tokens: Vec<Token>,
@@ -101,14 +109,14 @@ impl Parser {
         Self {input: TokenInput::new(tokens)}
     }
 
-    pub fn parse_statement(&mut self) -> ParserResult<Statement> {
-        // match self.parse_const_or_var_decl(false) {
-        //     ParserResult::None => (),
-        //     ParserResult::Err(error) => return ParserResult::Err(error),
-        //     ParserResult::Some((decl, pos)) => {
-        //         return ParserResult::Some((Statement::ConstantDeclaration(decl), pos))
-        //     },
-        // }
+    pub fn parse_declaration(&mut self) -> ParserResult<Statement> {
+        match self.parse_const_or_var_decl(false) {
+            ParserResult::None => (),
+            ParserResult::Err(error) => return ParserResult::Err(error),
+            ParserResult::Some((decl, pos)) => {
+                return ParserResult::Some((Statement::ConstantDeclaration(decl), pos))
+            },
+        }
 
         match self.parse_const_or_var_decl(true) {
             ParserResult::None => (),
@@ -142,6 +150,14 @@ impl Parser {
             }
         }
 
+        match self.parse_type_decl() {
+            ParserResult::None => (),
+            ParserResult::Err(error) => return ParserResult::Err(error),
+            ParserResult::Some((decl, pos)) => {
+                return ParserResult::Some((Statement::TypeDeclaration(decl), pos))
+            }
+        }
+
         ParserResult::None
     }
 
@@ -157,9 +173,8 @@ impl Parser {
 
         // "const" / "var"
         match self.parse_keyword(keyword) {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some(_) => (),
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some(_) => (),
         }
 
         // Identifier ":" Type
@@ -171,9 +186,8 @@ impl Parser {
 
         // "="
         match self.parse_token(TokenKind::Equal) {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some(_) => (),
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some(_) => (),
         }
 
         // Expression
@@ -185,9 +199,8 @@ impl Parser {
 
         // ";"
         let position = match self.parse_token(TokenKind::SemiColon) {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((_, remaining)) => remaining,
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some((_, remaining)) => remaining,
         };
 
         ParserResult::Some(
@@ -228,9 +241,8 @@ impl Parser {
 
         // "{"
         match self.parse_token(TokenKind::LeftBrace) {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some(_) => (),
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some(_) => (),
         }
 
         // ( Field ";" )* 
@@ -242,29 +254,59 @@ impl Parser {
             }
 
             match self.parse_token(TokenKind::SemiColon) {
-                ParserResult::None => return ParserResult::Err(ParserError::UnexpectedToken),
-                ParserResult::Err(error) => return ParserResult::Err(error),
-                ParserResult::Some(_) => (),
+                ParserOption::None => return ParserResult::Err(ParserError::UnexpectedToken),
+                ParserOption::Some(_) => (),
             }
         }
 
         // "}"
         match self.parse_token(TokenKind::RightBrace) {
-            ParserResult::None => ParserResult::None,
-            ParserResult::Err(error) => ParserResult::Err(error),
-            ParserResult::Some((_, remaining)) => ParserResult::Some(
+            ParserOption::None => ParserResult::None,
+            ParserOption::Some((_, remaining)) => ParserResult::Some(
                 (StructUnionDeclaration {is_union, identifier, fields}, remaining)
             ),
         }
     }
 
+    fn parse_type_decl(&mut self) -> ParserResult<TypeDeclaration> {
+        // "type" Identifier "=" Type ";"
+        // keyword Identifir "=" Type ";"
+
+        // keyword Identifier
+        let identifier = match self.parse_keyword_with_identifier(Keyword::Type) {
+            ParserResult::None => return ParserResult::None,
+            ParserResult::Err(error) => return ParserResult::Err(error),
+            ParserResult::Some((identifier, _)) => identifier,
+        };
+
+        // "="
+        match self.parse_token(TokenKind::Equal) {
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some(_) => (),
+        }
+
+        // Type
+        let ty = match self.parse_type() {
+            ParserResult::None => return ParserResult::None,
+            ParserResult::Err(error) => return ParserResult::Err(error),
+            ParserResult::Some((ty, _)) => ty,
+        };
+
+        // ";"
+        let position = match self.parse_token(TokenKind::SemiColon) {
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some((_, remaining)) => remaining,
+        };
+
+        ParserResult::Some((TypeDeclaration {identifier, ty}, position))
+    }
+
     fn parse_expression(&mut self) -> ParserResult<Expression> {
         match self.parse_token(TokenKind::IntegerLiteral(IntegerLiteralType::Decimal, 5)) {
-            ParserResult::None => ParserResult::None,
-            ParserResult::Some((expr, position)) => ParserResult::Some(
+            ParserOption::None => ParserResult::None,
+            ParserOption::Some((expr, position)) => ParserResult::Some(
                 (Expression::IntegerLiteral(IntegerLiteralType::Decimal, 5), position)
             ),
-            ParserResult::Err(error) => ParserResult::Err(error),
         }
     }
 
@@ -278,89 +320,21 @@ impl Parser {
 
         for (primitive, kind) in primitives {
             match self.parse_keyword(primitive) {
-                ParserResult::None => continue,
-                ParserResult::Err(error) => return ParserResult::Err(error),
-                ParserResult::Some((_, position)) => return ParserResult::Some((kind, position))
+                ParserOption::None => continue,
+                ParserOption::Some((_, position)) => return ParserResult::Some((kind, position))
             }
         }
 
         ParserResult::None
     }
 
-    fn parse_keyword(&mut self, target: Keyword) -> ParserResult<()> {
-        self.input.push();
-
-        if let Some(token) = self.input.next() {
-            if let TokenKind::Keyword(ref keyword) = token.kind {
-                println!("{:?} {:?}", keyword, token.kind);
-                self.input.drop();
-                ParserResult::Some(((), token.position))
-            } else {
-                self.input.pop();
-                ParserResult::None
-            }
-        } else {
-            self.input.drop();
-            ParserResult::None
-        }
-    }
-
-    fn parse_token(&mut self, target: TokenKind) -> ParserResult<()> {
-        self.input.push();
-
-        if let Some(token) = self.input.next() {
-            if target == token.kind {
-                self.input.drop();
-                ParserResult::Some(((), token.position))
-            } else {
-                self.input.pop();
-                ParserResult::None
-            }
-        } else {
-            self.input.drop();
-            ParserResult::None
-        }
-    }
-
-    fn parse_identifier(&mut self) -> ParserResult<String> {
-        self.input.push();
-
-        if let Some(token) = self.input.next() {
-            if let TokenKind::Identifier(identifier) = token.kind {
-                self.input.drop();
-                ParserResult::Some((identifier, token.position))
-            } else {
-                self.input.pop();
-                ParserResult::None
-            }
-        } else {
-            self.input.drop();
-            ParserResult::None
-        }
-    }
-
-    fn parse_whitespace(&mut self) -> ParserResult<bool> {
-        self.input.push();
-
-        if let Some(token) = self.input.next() {
-            if let TokenKind::Whitespace(has_newline) = token.kind {
-                self.input.drop();
-                ParserResult::Some((has_newline, token.position))
-            } else {
-                self.input.pop();
-                ParserResult::None
-            }
-        } else {
-            self.input.drop();
-            ParserResult::None
-        }
-    }
-
     fn parse_keyword_with_identifier(&mut self, target: Keyword) -> ParserResult<String> {
         match self.parse_keyword(target) {
-            ParserResult::None => ParserResult::None,
-            ParserResult::Err(error) => ParserResult::Err(error),
-            ParserResult::Some(_) => self.parse_identifier(),
+            ParserOption::None => ParserResult::None,
+            ParserOption::Some(_) => match self.parse_identifier() {
+                ParserOption::None => ParserResult::None,
+                ParserOption::Some(val) => ParserResult::Some(val),
+            },
         }
     }
 
@@ -370,17 +344,15 @@ impl Parser {
 
         // Identifier
         let identifier = match self.parse_identifier() {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((identifier, _)) => identifier,
+            ParserOption::None => return ParserResult::None,
+            ParserOption::Some((identifier, _)) => identifier,
         };
 
         // ":"
         match self.parse_token(TokenKind::Colon) {
-            ParserResult::None => ParserResult::None,
-            ParserResult::Err(error) => ParserResult::Err(error),
+            ParserOption::None => ParserResult::None,
             // Type
-            ParserResult::Some(_) => {
+            ParserOption::Some(_) => {
                 match self.parse_type() {
                     ParserResult::None => ParserResult::None,
                     ParserResult::Err(error) => ParserResult::Err(error),
@@ -389,6 +361,79 @@ impl Parser {
                     ),
                 }
             }
+        }
+    }
+
+    fn parse_keyword(&mut self, target: Keyword) -> ParserOption<()> {
+        self.input.push();
+
+        if let Some(token) = self.input.next() {
+            if let TokenKind::Keyword(keyword) = token.kind {
+                if keyword == target {
+                    self.input.drop();
+                    ParserOption::Some(((), token.position))
+                } else {
+                    self.input.pop();
+                    ParserOption::None
+                }
+            } else {
+                self.input.pop();
+                ParserOption::None
+            }
+        } else {
+            self.input.drop();
+            ParserOption::None
+        }
+    }
+
+    fn parse_token(&mut self, target: TokenKind) -> ParserOption<()> {
+        self.input.push();
+
+        if let Some(token) = self.input.next() {
+            if target == token.kind {
+                self.input.drop();
+                ParserOption::Some(((), token.position))
+            } else {
+                self.input.pop();
+                ParserOption::None
+            }
+        } else {
+            self.input.drop();
+            ParserOption::None
+        }
+    }
+
+    fn parse_identifier(&mut self) -> ParserOption<String> {
+        self.input.push();
+
+        if let Some(token) = self.input.next() {
+            if let TokenKind::Identifier(identifier) = token.kind {
+                self.input.drop();
+                ParserOption::Some((identifier, token.position))
+            } else {
+                self.input.pop();
+                ParserOption::None
+            }
+        } else {
+            self.input.drop();
+            ParserOption::None
+        }
+    }
+
+    fn parse_whitespace(&mut self) -> ParserOption<bool> {
+        self.input.push();
+
+        if let Some(token) = self.input.next() {
+            if let TokenKind::Whitespace(has_newline) = token.kind {
+                self.input.drop();
+                ParserOption::Some((has_newline, token.position))
+            } else {
+                self.input.pop();
+                ParserOption::None
+            }
+        } else {
+            self.input.drop();
+            ParserOption::None
         }
     }
 }

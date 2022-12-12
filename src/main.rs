@@ -7,15 +7,29 @@ mod compiler;
 
 use compiler::*;
 
-fn main() -> CompilerResult<()> {
+fn main() {
     let tokens = Token::from_kinds(
         vec![
-            TokenKind::Keyword(Keyword::Const),
+            TokenKind::Keyword(Keyword::Var),
             TokenKind::Identifier(String::from("foo")),
             TokenKind::Colon,
             TokenKind::Keyword(Keyword::U8),
             TokenKind::Equal,
             TokenKind::IntegerLiteral(IntegerLiteralType::Decimal, 5),
+            TokenKind::SemiColon,
+            //
+            TokenKind::Keyword(Keyword::Const),
+            TokenKind::Identifier(String::from("bar")),
+            TokenKind::Colon,
+            TokenKind::Keyword(Keyword::U8),
+            TokenKind::Equal,
+            TokenKind::IntegerLiteral(IntegerLiteralType::Decimal, 5),
+            TokenKind::SemiColon,
+            //
+            TokenKind::Keyword(Keyword::Type),
+            TokenKind::Identifier(String::from("baz")),
+            TokenKind::Equal,
+            TokenKind::Keyword(Keyword::U8),
             TokenKind::SemiColon,
         ]
     );
@@ -23,6 +37,4 @@ fn main() -> CompilerResult<()> {
     for stmt in parse(tokens).unwrap() {
         println!("{:?}", stmt);
     }
-
-    Ok(())
 }

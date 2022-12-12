@@ -30,8 +30,8 @@ pub type CompilerResult<T> = Result<T, CompilerError>;
 
 pub enum OptionResult<T, E> {
     None,
-    Some(T),
     Err(E),
+    Some(T),
 }
 
 impl<T, E> OptionResult<T, E> {
@@ -49,30 +49,26 @@ impl<T, E> OptionResult<T, E> {
 
 pub fn tokenize() -> CompilerResult<Vec<Token>> {
     let mut lexer = Lexer::new(String::from("var foo: u8 = 69;"));
-    let mut result: Vec<Token> = Vec::new();
+    let mut result = Vec::new();
 
     loop {
         match lexer.next_token() {
-            OptionResult::None => break,
-            OptionResult::Some(token) => result.push(token),
-            OptionResult::Err(error) => return Err(error.into()),
+            LexerResult::None => break Ok(result),
+            LexerResult::Some(token) => result.push(token),
+            LexerResult::Err(error) => return Err(error.into()),
         }
     }
-
-    Ok(result)
 }
 
 pub fn parse(tokens: Vec<Token>) -> CompilerResult<Vec<Statement>> {
     let mut parser = Parser::new(tokens);
-    let mut result: Vec<Statement> = Vec::new();
+    let mut result = Vec::new();
 
     loop {
-        match parser.parse_statement() {
-            OptionResult::None => break,
-            OptionResult::Some((statement, _)) => result.push(statement),
-            OptionResult::Err(error) => return Err(error.into()),
+        match parser.parse_declaration() {
+            ParserResult::None => break Ok(result),
+            ParserResult::Some((statement, _)) => result.push(statement),
+            ParserResult::Err(error) => return Err(error.into()),
         }
     }
-
-    Ok(result)
 }
