@@ -9,7 +9,7 @@ Opal is a simple imperative language targeting the BW8 architecture. It has a st
     const SOME_CONST: u8 = 2;
 
     fn some_function(arg: u8): u8 {
-        val: u8 = arg + SOME_CONST;
+        var val: u8 = arg + SOME_CONST;
         return val + 1;
     }
 

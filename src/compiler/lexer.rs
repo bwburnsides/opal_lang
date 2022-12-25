@@ -1,16 +1,20 @@
-use crate::compiler::OptionResult;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct TextPosition {
     pub absolute: usize,
     pub line: usize,
     pub column: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TokenPosition {
     pub start: TextPosition,
     pub end: TextPosition,
+}
+
+impl TokenPosition {
+    pub fn new(start: TextPosition, end: TextPosition) -> Self {
+        Self { start, end }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -41,33 +45,46 @@ pub enum Keyword {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum IntegerLiteralType {
+pub enum IntegerLiteralKind {
     Decimal,
     Hexadecimal,
     Binary,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
     pub position: TokenPosition,
 }
 
 impl Token {
+    pub fn new(kind: TokenKind, position: TokenPosition) -> Self {
+        Self { kind, position }
+    }
+
     pub fn from_kind(kind: TokenKind) -> Self {
         Self {
             kind,
             position: TokenPosition {
-                start: TextPosition { absolute: 0, line: 0, column: 0 },
-                end: TextPosition { absolute: 0, line: 0, column: 0 }
-            }
+                start: TextPosition {
+                    absolute: 0,
+                    line: 0,
+                    column: 0,
+                },
+                end: TextPosition {
+                    absolute: 0,
+                    line: 0,
+                    column: 0,
+                },
+            },
         }
     }
 
-    pub fn from_kinds(kinds: Vec<TokenKind>) -> Vec<Self> {
-        kinds.iter().map(
-            |kind| Self::from_kind(kind.clone())
-        ).collect()
+    pub fn from_kinds(kinds: &Vec<TokenKind>) -> Vec<Self> {
+        kinds
+            .iter()
+            .map(|kind| Self::from_kind(kind.clone()))
+            .collect()
     }
 }
 
@@ -76,8 +93,16 @@ impl Default for Token {
         Self {
             kind: TokenKind::Illegal,
             position: TokenPosition {
-                start: TextPosition { absolute: 0, line: 0, column: 0 },
-                end: TextPosition { absolute: 0, line: 0, column: 0 }
+                start: TextPosition {
+                    absolute: 0,
+                    line: 0,
+                    column: 0,
+                },
+                end: TextPosition {
+                    absolute: 0,
+                    line: 0,
+                    column: 0,
+                },
             },
         }
     }
@@ -87,8 +112,8 @@ impl Default for Token {
 pub enum TokenKind {
     Keyword(Keyword),
     Identifier(String),
-    IntegerLiteral(IntegerLiteralType, u16),
-    CharLiteral(Option<char>),
+    IntegerLiteral(IntegerLiteralKind, u16),
+    CharLiteral(char),
     StringLiteral(String),
     LeftBracket,
     RightBracket,
@@ -130,92 +155,133 @@ pub enum TokenKind {
     ForwardSlash,
     Percent,
     Dot,
-    Whitespace(bool),
+    Whitespace(usize),
     EOF,
     Illegal,
 }
 
-#[derive(Debug)]
-pub struct LexerError {
-    msg: String,
-    line: usize,
-    column: usize,
+#[derive(Debug, PartialEq)]
+pub enum LexErrorKind {
+    EOF,
+    UnrecognizedCharacter,
 }
 
-pub type LexerResult<T> = OptionResult<T, LexerError>;
+#[derive(Debug, PartialEq)]
+pub struct LexError {
+    pub kind: LexErrorKind,
+    msg: String,
+    position: TextPosition,
+}
+
+impl LexError {
+    pub fn new(kind: LexErrorKind, position: TextPosition) -> Self {
+        LexError {
+            kind,
+            msg: String::from("Not given"),
+            position,
+        }
+    }
+
+    pub fn with_msg(self, msg: String) -> Self {
+        return Self {
+            kind: self.kind,
+            position: self.position,
+            msg,
+        };
+    }
+}
+
+pub type LexResult<T> = Result<T, LexError>;
 
 pub struct Lexer {
-    input: String,
+    input: Vec<char>,
     position: TextPosition,
 }
 
 impl Lexer {
-    pub fn new(input: String) -> Self {
+    pub fn new(input: &str) -> Self {
         Lexer {
-            input,
+            input: String::from(input).chars().collect(),
             position: TextPosition {
                 absolute: 0,
                 line: 0,
-                column: 0
+                column: 0,
             },
         }
     }
 
-    pub fn next_token(&mut self) -> LexerResult<Token> {
+    pub fn next_token(&mut self) -> LexResult<Token> {
         if self.current().is_none() {
-            return LexerResult::None;
+            return LexResult::Err(LexError::new(LexErrorKind::EOF, self.position));
         }
 
         match self.next_whitespace() {
-            LexerResult::Some(token) => return LexerResult::Some(token),
-            LexerResult::Err(error) => return LexerResult::Err(error),
-            LexerResult::None => (),
+            Ok(token) => return Ok(token),
+            Err(error) => {
+                if let LexErrorKind::EOF = error.kind {
+                    return Err(error);
+                }
+            }
         }
 
         match self.next_integer_literal() {
-            LexerResult::Some(token) => return LexerResult::Some(token),
-            LexerResult::Err(error) => return LexerResult::Err(error),
-            LexerResult::None => (),
+            Ok(token) => return Ok(token),
+            Err(error) => {
+                if let LexErrorKind::EOF = error.kind {
+                    return Err(error);
+                }
+            }
         }
 
         match self.next_char_literal() {
-            LexerResult::Some(token) => return LexerResult::Some(token),
-            LexerResult::Err(error) => return LexerResult::Err(error),
-            LexerResult::None => (),
+            Ok(token) => return Ok(token),
+            Err(error) => {
+                if let LexErrorKind::EOF = error.kind {
+                    return Err(error);
+                }
+            }
         }
 
         match self.next_string_literal() {
-            LexerResult::Some(token) => return LexerResult::Some(token),
-            LexerResult::Err(error) => return LexerResult::Err(error),
-            LexerResult::None => (),
+            Ok(token) => return Ok(token),
+            Err(error) => {
+                if let LexErrorKind::EOF = error.kind {
+                    return Err(error);
+                }
+            }
         }
 
         match self.next_keyword() {
-            LexerResult::Some(token) => return LexerResult::Some(token),
-            LexerResult::Err(error) => return LexerResult::Err(error),
-            LexerResult::None => (),
+            Ok(token) => return Ok(token),
+            Err(error) => {
+                if let LexErrorKind::EOF = error.kind {
+                    return Err(error);
+                }
+            }
         }
 
         match self.next_identifier() {
-            LexerResult::Some(token) => return LexerResult::Some(token),
-            LexerResult::Err(error) => return LexerResult::Err(error),
-            LexerResult::None => (),
+            Ok(token) => return Ok(token),
+            Err(error) => {
+                if let LexErrorKind::EOF = error.kind {
+                    return Err(error);
+                }
+            }
         }
 
-        LexerResult::Err(
-            LexerError {
-                msg: format!(
-                    "Unrecognized character '{}'",
-                    self.current().unwrap(),
-                ),
-                line: self.position.line,
-                column: self.position.column,
-            }
+        LexResult::Err(
+            LexError::new(LexErrorKind::UnrecognizedCharacter, self.position).with_msg(format!(
+                "Unrecognized character '{}'",
+                self.current().unwrap()
+            )),
         )
     }
 
     fn current(&self) -> Option<char> {
-        self.input.chars().nth(self.position.absolute)
+        match self.input.get(self.position.absolute) {
+            Some(char_ref) => Some(*char_ref),
+            None => None,
+        }
     }
 
     fn advance(&mut self) {
@@ -227,7 +293,7 @@ impl Lexer {
                     self.position.column = 0;
                 }
                 self.position.absolute += 1;
-            },
+            }
         }
     }
 
@@ -237,38 +303,111 @@ impl Lexer {
         }
     }
 
-    fn advance_while(&mut self, predicate: fn(char) -> bool) {
+    fn advance_while(&mut self, predicate: fn(char) -> bool) -> Vec<char> {
+        let mut span = Vec::new();
+
         loop {
             match self.current() {
-                None => return,
-                Some(char) => if predicate(char) {
-                    self.advance();
+                None => return span,
+                Some(char) => {
+                    if predicate(char) {
+                        span.push(char);
+                        self.advance();
+                    }
                 }
             };
         }
     }
 
-    fn next_whitespace(&mut self) -> LexerResult<Token> {
+    fn next_whitespace(&mut self) -> LexResult<Token> {
+        let start = self.position.clone();
+
+        let consumed = self.advance_while(|c| -> bool { c.is_ascii_whitespace() });
+
+        match consumed.len() {
+            0 => LexResult::Err(LexError::new(
+                LexErrorKind::UnrecognizedCharacter,
+                self.position,
+            )),
+            line_break_count => LexResult::Ok(Token::new(
+                TokenKind::Whitespace(line_break_count),
+                TokenPosition::new(start, self.position),
+            )),
+        }
+    }
+
+    fn next_integer_literal(&mut self) -> LexResult<Token> {
+        let start = self.position.clone();
+
+        let consumed = self.advance_while(|c| -> bool { is_opal_decimal_digit(c) });
+        let non_underscore: Vec<char> = consumed.into_iter().filter(|c| *c != '_').collect();
+
+        match non_underscore.len() {
+            0 => LexResult::Err(LexError::new(
+                LexErrorKind::UnrecognizedCharacter,
+                self.position,
+            )),
+            num_digits => {
+                let literal: u16 = non_underscore.iter().collect::<String>().parse().unwrap();
+                LexResult::Ok(Token::new(
+                    TokenKind::IntegerLiteral(IntegerLiteralKind::Decimal, literal),
+                    TokenPosition::new(start, self.position),
+                ))
+            }
+        }
+    }
+
+    fn next_char_literal(&mut self) -> LexResult<Token> {
+        let start = self.position.clone();
+
+        match self.current() {
+            None => LexResult::Err(LexError::new(LexErrorKind::EOF, self.position)),
+            Some('\'') => {
+                self.advance();
+
+                match self.current() {
+                    None => LexResult::Err(LexError::new(LexErrorKind::EOF, self.position)),
+                    Some('\'') => LexResult::Err(LexError::new(
+                        LexErrorKind::UnrecognizedCharacter,
+                        self.position,
+                    )), // this is temporary. for now not worrying about empty literals or escape sequences.
+                    Some(literal) => {
+                        self.advance();
+
+                        match self.current() {
+                            None => LexResult::Err(LexError::new(LexErrorKind::EOF, self.position)),
+                            Some('\'') => LexResult::Ok(Token::new(
+                                TokenKind::CharLiteral(literal),
+                                TokenPosition::new(start, self.position),
+                            )),
+                            Some(_) => LexResult::Err(LexError::new(
+                                LexErrorKind::UnrecognizedCharacter,
+                                self.position,
+                            )),
+                        }
+                    }
+                }
+            }
+            Some(_) => LexResult::Err(LexError::new(
+                LexErrorKind::UnrecognizedCharacter,
+                self.position,
+            )),
+        }
+    }
+
+    fn next_string_literal(&mut self) -> LexResult<Token> {
         todo!()
     }
 
-    fn next_integer_literal(&mut self) -> LexerResult<Token> {
+    fn next_keyword(&mut self) -> LexResult<Token> {
         todo!()
     }
 
-    fn next_char_literal(&mut self) -> LexerResult<Token> {
+    fn next_identifier(&mut self) -> LexResult<Token> {
         todo!()
     }
+}
 
-    fn next_string_literal(&mut self) -> LexerResult<Token> {
-        todo!()
-    }
-
-    fn next_keyword(&mut self) -> LexerResult<Token> {
-        todo!()
-    }
-
-    fn next_identifier(&mut self) -> LexerResult<Token> {
-        todo!()
-    }
+fn is_opal_decimal_digit(c: char) -> bool {
+    c.is_digit(10) || c == '_'
 }

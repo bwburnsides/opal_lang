@@ -1,21 +1,36 @@
-use crate::compiler::OptionResult;
-
-use super::{Token, Keyword, TokenKind, TokenPosition, IntegerLiteralType};
+use super::{Token, Keyword, TokenKind, TokenPosition, IntegerLiteralKind};
 
 #[derive(Debug)]
-pub struct ParserError {
-    msg: String,
-    line: usize,
-    column: usize,
+pub struct ParseError {
+    pub kind: ParseErrorKind,
+    pub msg: String,
+    pub line: usize,
+    pub column: usize,
 }
 
-impl ParserError {
+#[derive(Debug, Clone, Copy)]
+pub enum ParseErrorKind {
+    UnexpectedToken,
+    UnexpectedEOF,
+}
+
+impl ParseError {
     pub fn unexpected_token(parser: &Parser) -> Self {
         Self {
+            kind: ParseErrorKind::UnexpectedToken,
             msg: format!(
                 "Unexpected token {:?}",
                 parser.input.clone().prev().unwrap_or_default()
             ),
+            line: parser.input.clone().prev().unwrap_or_default().position.start.line,
+            column: parser.input.clone().prev().unwrap_or_default().position.start.column,
+        }
+    }
+
+    pub fn from_kind(parser: &Parser, kind: ParseErrorKind) -> Self {
+        Self {
+            kind,
+            msg: format!("Parsing error: {:?}", kind),
             line: parser.input.clone().prev().unwrap_or_default().position.start.line,
             column: parser.input.clone().prev().unwrap_or_default().position.start.column,
         }
@@ -31,13 +46,23 @@ pub struct ConstantVariableDeclaration {
 }
 
 #[derive(Debug)]
-pub struct FunctionDeclaration;
+pub struct FunctionDeclaration {
+    identifier: String,
+    parameters: Vec<Field>,
+    return_type: Option<Type>,
+}
 
 #[derive(Debug)]
 pub struct StructUnionDeclaration {
     is_union: bool,
     identifier: String,
     fields: Vec<Field>,
+}
+
+#[derive(Debug)]
+pub struct EnumDeclaration {
+    identifier: String,
+    variants: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -53,6 +78,7 @@ pub enum Statement {
     FunctionDeclaration(FunctionDeclaration),
     StructDeclaration(StructUnionDeclaration),
     UnionDeclaration(StructUnionDeclaration),
+    EnumDeclaration(EnumDeclaration),
     TypeDeclaration(TypeDeclaration),
 }
 
@@ -66,7 +92,7 @@ pub enum Type {
 
 #[derive(Debug)]
 pub enum Expression {
-    IntegerLiteral(IntegerLiteralType, i16),
+    IntegerLiteral(IntegerLiteralKind, i16),
 }
 
 #[derive(Debug)]
@@ -75,12 +101,11 @@ pub struct Field {
     field_type: Type,
 }
 
-pub type ParserResult<T> = OptionResult<(T, TokenPosition), ParserError>;
-pub type ParserOption<T> = Option<(T, TokenPosition)>;
+pub type ParseResult<T> = Result<(T, TokenPosition), ParseError>;
 
-#[derive(Clone)]
-struct TokenInput {
-    tokens: Vec<Token>,
+#[derive(Clone, Debug)]
+pub struct TokenInput {  // TODO: don't keep public
+    pub tokens: Vec<Token>,  // TODO: don't keep public
     index: usize,
     stack: Vec<usize>,
 }
@@ -136,7 +161,7 @@ impl TokenInput {
 }
 
 pub struct Parser {
-    input: TokenInput,
+    pub input: TokenInput,  // TODO: don't keep public
 }
 
 impl Parser {
@@ -144,59 +169,94 @@ impl Parser {
         Self {input: TokenInput::new(tokens)}
     }
 
-    pub fn parse_declaration(&mut self) -> ParserResult<Statement> {
+    pub fn is_exhausted(&mut self) -> bool {
+        self.input.push();
+        let next = self.input.next();
+        self.input.pop();
+
+        match next {
+            Option::None => false,
+            Option::Some(_) => true,
+        }
+    }
+
+    pub fn parse_declaration(&mut self) -> ParseResult<Statement> {
         match self.parse_const_or_var_decl(false) {
-            ParserResult::None => (),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((decl, pos)) => {
-                return ParserResult::Some((Statement::ConstantDeclaration(decl), pos))
+            ParseResult::Err(err) => match err {
+                ParseError {
+                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                } => return ParseResult::Err(err),
+                _ => (),
+            },
+            ParseResult::Ok((decl, pos)) => {
+                return ParseResult::Ok((Statement::ConstantDeclaration(decl), pos))
             },
         }
 
         match self.parse_const_or_var_decl(true) {
-            ParserResult::None => (),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((decl, pos)) => {
-                return ParserResult::Some((Statement::VariableDeclaration(decl), pos))
+            ParseResult::Err(err) => match err {
+                ParseError {
+                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                } => return ParseResult::Err(err),
+                _ => (),
+            },
+            ParseResult::Ok((decl, pos)) => {
+                return ParseResult::Ok((Statement::VariableDeclaration(decl), pos))
             },
         }
 
         match self.parse_fn_decl() {
-            ParserResult::None => (),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((decl, pos)) => {
-                return ParserResult::Some((Statement::FunctionDeclaration(decl), pos))
-            }
+            ParseResult::Err(err) => match err {
+                ParseError {
+                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                } => return ParseResult::Err(err),
+                _ => (),
+            },
+            ParseResult::Ok((decl, pos)) => {
+                return ParseResult::Ok((Statement::FunctionDeclaration(decl), pos))
+            },
         }
 
         match self.parse_struct_or_union_decl(false) {
-            ParserResult::None => (),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((decl, pos)) => {
-                return ParserResult::Some((Statement::StructDeclaration(decl), pos))
-            }
+            ParseResult::Err(err) => match err {
+                ParseError {
+                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                } => return ParseResult::Err(err),
+                _ => (),
+            },
+            ParseResult::Ok((decl, pos)) => {
+                return ParseResult::Ok((Statement::StructDeclaration(decl), pos))
+            },
         }
 
         match self.parse_struct_or_union_decl(true) {
-            ParserResult::None => (),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((decl, pos)) => {
-                return ParserResult::Some((Statement::UnionDeclaration(decl), pos))
-            }
+            ParseResult::Err(err) => match err {
+                ParseError {
+                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                } => return ParseResult::Err(err),
+                _ => (),
+            },
+            ParseResult::Ok((decl, pos)) => {
+                return ParseResult::Ok((Statement::UnionDeclaration(decl), pos))
+            },
         }
 
         match self.parse_type_decl() {
-            ParserResult::None => (),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((decl, pos)) => {
-                return ParserResult::Some((Statement::TypeDeclaration(decl), pos))
-            }
+            ParseResult::Err(err) => match err {
+                ParseError {
+                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                } => return ParseResult::Err(err),
+                _ => (),
+            },
+            ParseResult::Ok((decl, pos)) => {
+                return ParseResult::Ok((Statement::TypeDeclaration(decl), pos))
+            },
         }
 
-        ParserResult::None
+        ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedToken))
     }
 
-    fn parse_const_or_var_decl(&mut self, is_var: bool) -> ParserResult<ConstantVariableDeclaration> {
+    fn parse_const_or_var_decl(&mut self, is_var: bool) -> ParseResult<ConstantVariableDeclaration> {
         // "const" / "var" Identifier ":" Type "=" Expression ";"
         // keyword Field "=" Expression ";"
 
@@ -208,37 +268,35 @@ impl Parser {
 
         // "const" / "var"
         match self.parse_keyword(keyword) {
-            ParserOption::None => return ParserResult::None,
-            ParserOption::Some(_) => (),
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok(_) => (),
         }
 
         // Identifier ":" Type
         let field = match self.parse_field() {
-            ParserResult::None => return ParserResult::Err(ParserError::unexpected_token(self)),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((field, _)) => field,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok((field, _)) => field,
         };
 
         // "="
         match self.parse_token(TokenKind::Equal) {
-            ParserOption::None => return ParserResult::Err(ParserError::unexpected_token(self)),
-            ParserOption::Some(_) => (),
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok(_) => (),
         }
 
         // Expression
         let expression = match self.parse_expression() {
-            ParserResult::None => return ParserResult::Err(ParserError::unexpected_token(self)),
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((expression, _)) => expression,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok((expression, _)) => expression,
         };
 
         // ";"
         let position = match self.parse_token(TokenKind::SemiColon) {
-            ParserOption::None => return ParserResult::Err(ParserError::unexpected_token(self)),
-            ParserOption::Some((_, remaining)) => remaining,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok((_, remaining)) => remaining,
         };
 
-        ParserResult::Some(
+        ParseResult::Ok(
             (
                 ConstantVariableDeclaration {
                     is_var,
@@ -251,11 +309,11 @@ impl Parser {
         )
     }
 
-    fn parse_fn_decl(&mut self) -> ParserResult<FunctionDeclaration> {
-        ParserResult::None
+    fn parse_fn_decl(&mut self) -> ParseResult<FunctionDeclaration> {
+        ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedToken))
     }
 
-    fn parse_struct_or_union_decl(&mut self, is_union: bool) -> ParserResult<StructUnionDeclaration> {
+    fn parse_struct_or_union_decl(&mut self, is_union: bool) -> ParseResult<StructUnionDeclaration> {
         // "struct" / "union" Identifier "{" ( Field ";" )* "}"
         // keyword Identifir "{" ( Field ";" )* "}"
 
@@ -269,83 +327,87 @@ impl Parser {
 
         // keyword Identifier
         let identifier = match self.parse_keyword_with_identifier(keyword) {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((identifier, _)) => identifier,
+            ParseResult::Err(error) => return ParseResult::Err(error),
+            ParseResult::Ok((identifier, _)) => identifier,
         };
 
         // "{"
         match self.parse_token(TokenKind::LeftBrace) {
-            ParserOption::None => return ParserResult::None,
-            ParserOption::Some(_) => (),
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok(_) => (),
         }
 
-        // ( Field ";" )* 
+        // ( Field "," )* 
         loop {
+            // Parse fields until there are no more to parse.
+            // parse_field will return ParseResult::Err when it is unable to parse another field:
+            //
             match self.parse_field() {
-                ParserResult::None => break,
-                ParserResult::Err(error) => return ParserResult::Err(error),
-                ParserResult::Some((field, _)) => fields.push(field), 
+                ParseResult::Err(err) => match err {
+                    ParseError {
+                        kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _
+                    } => return ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF)),
+                    _ => break,
+                },
+                ParseResult::Ok((field, _)) => fields.push(field), 
             }
 
-            match self.parse_token(TokenKind::SemiColon) {
-                ParserOption::None => return ParserResult::Err(ParserError::unexpected_token(self)),
-                ParserOption::Some(_) => (),
+            match self.parse_token(TokenKind::Comma) {
+                ParseResult::Err(err) => return ParseResult::Err(ParseError::unexpected_token(self)),
+                ParseResult::Ok(_) => (),
             }
         }
 
         // "}"
         match self.parse_token(TokenKind::RightBrace) {
-            ParserOption::None => ParserResult::None,
-            ParserOption::Some((_, remaining)) => ParserResult::Some(
+            ParseResult::Err(err) => ParseResult::Err(err),
+            ParseResult::Ok((_, remaining)) => ParseResult::Ok(
                 (StructUnionDeclaration {is_union, identifier, fields}, remaining)
             ),
         }
     }
 
-    fn parse_type_decl(&mut self) -> ParserResult<TypeDeclaration> {
+    fn parse_type_decl(&mut self) -> ParseResult<TypeDeclaration> {
         // "type" Identifier "=" Type ";"
         // keyword Identifir "=" Type ";"
 
         // keyword Identifier
         let identifier = match self.parse_keyword_with_identifier(Keyword::Type) {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((identifier, _)) => identifier,
+            ParseResult::Err(error) => return ParseResult::Err(error),
+            ParseResult::Ok((identifier, _)) => identifier,
         };
 
         // "="
         match self.parse_token(TokenKind::Equal) {
-            ParserOption::None => return ParserResult::None,
-            ParserOption::Some(_) => (),
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok(_) => (),
         }
 
         // Type
         let ty = match self.parse_type() {
-            ParserResult::None => return ParserResult::None,
-            ParserResult::Err(error) => return ParserResult::Err(error),
-            ParserResult::Some((ty, _)) => ty,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok((ty, _)) => ty,
         };
 
         // ";"
         let position = match self.parse_token(TokenKind::SemiColon) {
-            ParserOption::None => return ParserResult::None,
-            ParserOption::Some((_, remaining)) => remaining,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok((_, remaining)) => remaining,
         };
 
-        ParserResult::Some((TypeDeclaration {identifier, ty}, position))
+        ParseResult::Ok((TypeDeclaration {identifier, ty}, position))
     }
 
-    fn parse_expression(&mut self) -> ParserResult<Expression> {
-        match self.parse_token(TokenKind::IntegerLiteral(IntegerLiteralType::Decimal, 5)) {
-            ParserOption::None => ParserResult::None,
-            ParserOption::Some((expr, position)) => ParserResult::Some(
-                (Expression::IntegerLiteral(IntegerLiteralType::Decimal, 5), position)
+    fn parse_expression(&mut self) -> ParseResult<Expression> {
+        match self.parse_token(TokenKind::IntegerLiteral(IntegerLiteralKind::Decimal, 5)) {
+            ParseResult::Err(err) => ParseResult::Err(err),
+            ParseResult::Ok((expr, position)) => ParseResult::Ok(
+                (Expression::IntegerLiteral(IntegerLiteralKind::Decimal, 5), position)
             ),
         }
     }
 
-    fn parse_type(&mut self) -> ParserResult<Type> {
+    fn parse_type(&mut self) -> ParseResult<Type> {
         let primitives = vec![
             (Keyword::U8, Type::U8),
             (Keyword::I8, Type::I8),
@@ -355,120 +417,127 @@ impl Parser {
 
         for (primitive, kind) in primitives {
             match self.parse_keyword(primitive) {
-                ParserOption::None => continue,
-                ParserOption::Some((_, position)) => return ParserResult::Some((kind, position))
+                ParseResult::Err(_) => continue,
+                ParseResult::Ok((_, position)) => return ParseResult::Ok((kind, position))
             }
         }
 
-        ParserResult::None
+        ParseResult::Err(ParseError::unexpected_token(self))
     }
 
-    fn parse_keyword_with_identifier(&mut self, target: Keyword) -> ParserResult<String> {
+    fn parse_keyword_with_identifier(&mut self, target: Keyword) -> ParseResult<String> {
         match self.parse_keyword(target) {
-            ParserOption::None => ParserResult::None,
-            ParserOption::Some(_) => match self.parse_identifier() {
-                ParserOption::None => ParserResult::None,
-                ParserOption::Some(val) => ParserResult::Some(val),
+            ParseResult::Err(err) => ParseResult::Err(err),
+            ParseResult::Ok(_) => match self.parse_identifier() {
+                ParseResult::Err(err) => ParseResult::Err(err),
+                ParseResult::Ok(val) => ParseResult::Ok(val),
             },
         }
     }
 
-    fn parse_field(&mut self) -> ParserResult<Field> {
+    fn parse_field(&mut self) -> ParseResult<Field> {
         // Field
         // Identifier ":" Type
 
         // Identifier
         let identifier = match self.parse_identifier() {
-            ParserOption::None => return ParserResult::None,
-            ParserOption::Some((identifier, _)) => identifier,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+            ParseResult::Ok((identifier, _)) => identifier,
         };
 
         // ":"
         match self.parse_token(TokenKind::Colon) {
-            ParserOption::None => ParserResult::None,
+            ParseResult::Err(err) => ParseResult::Err(err),
             // Type
-            ParserOption::Some(_) => {
+            ParseResult::Ok(_) => {
                 match self.parse_type() {
-                    ParserResult::None => ParserResult::None,
-                    ParserResult::Err(error) => ParserResult::Err(error),
-                    ParserResult::Some((field_type, remaining)) => return ParserResult::Some(
-                        (Field { identifier, field_type }, remaining)
-                    ),
+                    ParseResult::Err(err) => ParseResult::Err(err),
+                    ParseResult::Ok((field_type, remaining)) => {
+                        return ParseResult::Ok(
+                            (Field { identifier, field_type }, remaining)
+                        )
+                    },
                 }
             }
         }
     }
 
-    fn parse_keyword(&mut self, target: Keyword) -> ParserOption<()> {
+    fn parse_keyword(&mut self, target: Keyword) -> ParseResult<()> {
         self.input.push();
 
         if let Some(token) = self.input.next() {
             if let TokenKind::Keyword(keyword) = token.kind {
                 if keyword == target {
                     self.input.drop();
-                    ParserOption::Some(((), token.position))
+                    ParseResult::Ok(((), token.position))
                 } else {
                     self.input.pop();
-                    ParserOption::None
+                    ParseResult::Err(ParseError::unexpected_token(self))
                 }
             } else {
                 self.input.pop();
-                ParserOption::None
+                ParseResult::Err(ParseError::unexpected_token(self))
             }
         } else {
             self.input.drop();
-            ParserOption::None
+            ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF))
         }
     }
 
-    fn parse_token(&mut self, target: TokenKind) -> ParserOption<()> {
+    fn parse_token(&mut self, target: TokenKind) -> ParseResult<()> {
         self.input.push();
 
+        // Fetch the next token. If it exists:
         if let Some(token) = self.input.next() {
+            // If this token matches our target, then return that success.
             if target == token.kind {
                 self.input.drop();
-                ParserOption::Some(((), token.position))
+                ParseResult::Ok(((), token.position))
+            // Otherwise, the fetched token didn't match the target and parsing fails.
             } else {
                 self.input.pop();
-                ParserOption::None
+                ParseResult::Err(ParseError::unexpected_token(self))
             }
+        // Otherwise, if there wasn't another token, then we've unexpectedly reached the end of our input.
         } else {
             self.input.drop();
-            ParserOption::None
+            ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF))
         }
     }
 
-    fn parse_identifier(&mut self) -> ParserOption<String> {
+    fn parse_identifier(&mut self) -> ParseResult<String> {
         self.input.push();
 
         if let Some(token) = self.input.next() {
             if let TokenKind::Identifier(identifier) = token.kind {
                 self.input.drop();
-                ParserOption::Some((identifier, token.position))
+                ParseResult::Ok((identifier, token.position))
             } else {
                 self.input.pop();
-                ParserOption::None
+                ParseResult::Err(ParseError::unexpected_token(self))
             }
         } else {
             self.input.drop();
-            ParserOption::None
+            ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF))
         }
     }
 
-    fn parse_whitespace(&mut self) -> ParserOption<bool> {
+    fn parse_whitespace(&mut self) -> ParseResult<usize> {
         self.input.push();
 
         if let Some(token) = self.input.next() {
-            if let TokenKind::Whitespace(has_newline) = token.kind {
+            if let TokenKind::Whitespace(line_break_count) = token.kind {
                 self.input.drop();
-                ParserOption::Some((has_newline, token.position))
+                ParseResult::Ok((line_break_count, token.position))
             } else {
                 self.input.pop();
-                ParserOption::None
+                ParseResult::Err(ParseError::unexpected_token(self))
             }
         } else {
             self.input.drop();
-            ParserOption::None
+            ParseResult::Err(
+                ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF)
+            )
         }
     }
 }
