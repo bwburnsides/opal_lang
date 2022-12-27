@@ -279,6 +279,32 @@ fn string_literal() {
     )
 }
 
+#[test]
+fn string_literal_with_spaces() {
+    let contents = "this is a string literal with spaces";
+
+    assert_eq!(
+        Lexer::new(format!("\"{}\"", contents).as_str())
+            .next_token()
+            .unwrap(),
+        Token::new(
+            TokenKind::StringLiteral(String::from(contents)),
+            TokenPosition::new(
+                TextPosition {
+                    absolute: 0,
+                    line: 0,
+                    column: 0
+                },
+                TextPosition {
+                    absolute: 37,
+                    line: 0,
+                    column: 37
+                },
+            ),
+        )
+    );
+}
+
 // TODO: Should an empty string literal be valid syntax?
 #[test]
 fn empty_string_literal() {
@@ -457,4 +483,59 @@ fn unterminated_string_literal() {
         Lexer::new("\"foo").next_token().unwrap_err().kind,
         LexErrorKind::UnexpectedEOF
     );
+}
+
+#[test]
+fn full_line_comment() {
+    let input = "# this is a comment that should be ignored
+\"this is a string literal\"";
+
+    let mut lexer = Lexer::new(input);
+
+    assert_eq!(
+        lexer.next_token().unwrap(),
+        Token::new(
+            TokenKind::Comment(String::from(" this is a comment that should be ignored")),
+            TokenPosition::new(
+                TextPosition {
+                    absolute: 0,
+                    line: 0,
+                    column: 0,
+                },
+                TextPosition {
+                    absolute: 42,
+                    line: 0,
+                    column: 42,
+                },
+            ),
+        ),
+    );
+}
+
+#[test]
+fn inline_comment() {
+    let input = "4 #this is 4";
+    let mut lexer = Lexer::new(input);
+
+    lexer.next_token().unwrap();
+    lexer.next_token().unwrap();
+
+    assert_eq!(
+        lexer.next_token().unwrap(),
+        Token::new(
+            TokenKind::Comment(String::from("this is 4")),
+            TokenPosition::new(
+                TextPosition {
+                    absolute: 2,
+                    line: 0,
+                    column: 2,
+                },
+                TextPosition {
+                    absolute: 12,
+                    line: 0,
+                    column: 12,
+                },
+            )
+        )
+    )
 }

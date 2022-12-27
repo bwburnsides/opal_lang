@@ -162,7 +162,8 @@ pub enum TokenKind {
     Percent,
     Dot,
     Whitespace(usize),
-    EOF, //
+    Comment(String),
+    EOF,
     Illegal,
 }
 
@@ -234,10 +235,24 @@ impl Lexer {
 
         match self.next_whitespace() {
             Ok(token) => return Ok(token),
+            Err(err) => match err.kind {
+                UnexpectedEOF => return Err(err),
+                UnrecognizedCharacter => return Err(err),
+                _ => (),
+            },
+        }
+
+        match self.next_comment() {
+            Ok(token) => return Ok(token),
             Err(err) => {
                 match err.kind {
-                    UnexpectedEOF => return Err(err),
-                    UnrecognizedCharacter => return Err(err),
+                    // UnexpectedEOF => todo!(),
+                    // InputExhausted => todo!(),
+                    // UnrecognizedCharacter => todo!(),
+                    // MultipleCharLiteral => todo!(),
+                    // EmptyCharLiteral => todo!(),
+                    // EmptyStringLiteral => todo!(),
+                    // NonconformingLexeme => todo!(),
                     _ => (),
                 }
             }
@@ -245,59 +260,49 @@ impl Lexer {
 
         match self.next_integer_literal() {
             Ok(token) => return Ok(token),
-            Err(err) => {
-                match err.kind {
-                    UnexpectedEOF => return Err(err),
-                    _ => (),
-                }
-            }
+            Err(err) => match err.kind {
+                UnexpectedEOF => return Err(err),
+                _ => (),
+            },
         }
 
         match self.next_char_literal() {
             Ok(token) => return Ok(token),
-            Err(err) => {
-                match err.kind {
-                    UnexpectedEOF => return Err(err),
-                    UnrecognizedCharacter => return Err(err),
-                    MultipleCharLiteral => return Err(err),
-                    EmptyCharLiteral => return Err(err),
-                    _ => (),
-                }
-            }
+            Err(err) => match err.kind {
+                UnexpectedEOF => return Err(err),
+                UnrecognizedCharacter => return Err(err),
+                MultipleCharLiteral => return Err(err),
+                EmptyCharLiteral => return Err(err),
+                _ => (),
+            },
         }
 
         match self.next_string_literal() {
             Ok(token) => return Ok(token),
-            Err(err) => {
-                match err.kind {
-                    UnexpectedEOF => return Err(err),
-                    UnrecognizedCharacter => return Err(err),
-                    EmptyStringLiteral => return Err(err),
-                    _ => (),
-                }
-            }
+            Err(err) => match err.kind {
+                UnexpectedEOF => return Err(err),
+                UnrecognizedCharacter => return Err(err),
+                EmptyStringLiteral => return Err(err),
+                _ => (),
+            },
         }
 
         match self.next_identifier_or_keyword() {
             Ok(token) => return Ok(token),
-            Err(err) => {
-                match err.kind {
-                    UnexpectedEOF => return Err(err),
-                    UnrecognizedCharacter => return Err(err),
-                    _ => (),
-                }
-            }
+            Err(err) => match err.kind {
+                UnexpectedEOF => return Err(err),
+                UnrecognizedCharacter => return Err(err),
+                _ => (),
+            },
         }
 
         match self.next_primitive_token() {
             Ok(token) => return Ok(token),
-            Err(err) => {
-                match err.kind {
-                    UnexpectedEOF => return Err(err),
-                    UnrecognizedCharacter => return Err(err),
-                    _ => (),
-                }
-            }
+            Err(err) => match err.kind {
+                UnexpectedEOF => return Err(err),
+                UnrecognizedCharacter => return Err(err),
+                _ => (),
+            },
         }
 
         LexResult::Err(
@@ -384,6 +389,33 @@ impl Lexer {
         }
     }
 
+    fn next_comment(&mut self) -> LexResult<Token> {
+        use LexErrorKind::{NonconformingLexeme, UnexpectedEOF};
+        use TokenKind::Comment;
+
+        let start = self.position.clone();
+        let mut comment: Vec<char>;
+
+        match self.current() {
+            None => Err(LexError::new(UnexpectedEOF, self.position)),
+            Some('#') => {
+                self.advance();
+                comment = self.advance_while(|c| c != '\n');
+                Ok(Token::new(
+                    Comment(comment.iter().collect()),
+                    TokenPosition {
+                        start: start,
+                        end: self.position,
+                    },
+                ))
+            }
+            Some(c) => {
+                Err(LexError::new(NonconformingLexeme, self.position)
+                    .with_msg(format!("Expected `#`, found {}", c)))
+            }
+        }
+    }
+
     fn next_integer_literal(&mut self) -> LexResult<Token> {
         let start = self.position.clone();
 
@@ -406,7 +438,9 @@ impl Lexer {
     }
 
     fn next_char_literal(&mut self) -> LexResult<Token> {
-        use LexErrorKind::{EmptyCharLiteral, MultipleCharLiteral, UnexpectedEOF, NonconformingLexeme};
+        use LexErrorKind::{
+            EmptyCharLiteral, MultipleCharLiteral, NonconformingLexeme, UnexpectedEOF,
+        };
         use TokenKind::CharLiteral;
 
         let start = self.position.clone();
@@ -465,10 +499,7 @@ impl Lexer {
                 loop {
                     match self.current() {
                         None => {
-                            return Err(LexError::new(
-                                LexErrorKind::UnexpectedEOF,
-                                self.position,
-                            ))
+                            return Err(LexError::new(LexErrorKind::UnexpectedEOF, self.position))
                         }
                         Some('"') => {
                             let rv = Ok(Token::new(

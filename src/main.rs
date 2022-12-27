@@ -6,22 +6,27 @@
 mod compiler;
 mod tests;
 
-use compiler::{tokenize, parse};
+use compiler::{tokenize};
 
 fn main() {
-    let tokens = match tokenize("var foo: u8: 69;") {
-        Ok(tokens) => tokens,
+    let tokens = match tokenize("# Gonna tokenize this whole thing!
+var foo: u8: 69;  # Can do inline comments too") {
+        Ok(tokens) => {
+            for token in tokens {
+                println!("{:?}", token);
+            }
+        },
         Err(err) => {
             println!("Tokenizing failed: {:?}", err);
             return;
         }
     };
 
-    let ast = match parse(tokens) {
-        Ok(ast) => ast,
-        Err(err) => {
-            println!("Parsing failed: {:?}", err);
-            return;
-        }
-    };
+    // let ast = match parse(tokens) {
+    //     Ok(ast) => ast,
+    //     Err(err) => {
+    //         println!("Parsing failed: {:?}", err);
+    //         return;
+    //     }
+    // };
 }
