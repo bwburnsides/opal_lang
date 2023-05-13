@@ -1,4 +1,4 @@
-use super::{Token, Keyword, TokenKind, TokenPosition, IntegerLiteralKind};
+use super::{IntegerLiteralKind, Keyword, Token, TokenKind, TokenPosition};
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -22,8 +22,22 @@ impl ParseError {
                 "Unexpected token {:?}",
                 parser.input.clone().prev().unwrap_or_default()
             ),
-            line: parser.input.clone().prev().unwrap_or_default().position.start.line,
-            column: parser.input.clone().prev().unwrap_or_default().position.start.column,
+            line: parser
+                .input
+                .clone()
+                .prev()
+                .unwrap_or_default()
+                .position
+                .start
+                .line,
+            column: parser
+                .input
+                .clone()
+                .prev()
+                .unwrap_or_default()
+                .position
+                .start
+                .column,
         }
     }
 
@@ -31,8 +45,22 @@ impl ParseError {
         Self {
             kind,
             msg: format!("Parsing error: {:?}", kind),
-            line: parser.input.clone().prev().unwrap_or_default().position.start.line,
-            column: parser.input.clone().prev().unwrap_or_default().position.start.column,
+            line: parser
+                .input
+                .clone()
+                .prev()
+                .unwrap_or_default()
+                .position
+                .start
+                .line,
+            column: parser
+                .input
+                .clone()
+                .prev()
+                .unwrap_or_default()
+                .position
+                .start
+                .column,
         }
     }
 }
@@ -104,8 +132,9 @@ pub struct Field {
 pub type ParseResult<T> = Result<(T, TokenPosition), ParseError>;
 
 #[derive(Clone, Debug)]
-pub struct TokenInput {  // TODO: don't keep public
-    pub tokens: Vec<Token>,  // TODO: don't keep public
+pub struct TokenInput {
+    // TODO: don't keep public
+    pub tokens: Vec<Token>, // TODO: don't keep public
     index: usize,
     stack: Vec<usize>,
 }
@@ -124,11 +153,16 @@ impl TokenInput {
     }
 
     pub fn pop(&mut self) {
-        self.index = self.stack.pop().expect("Position stack is unexpectedly empty.");
+        self.index = self
+            .stack
+            .pop()
+            .expect("Position stack is unexpectedly empty.");
     }
 
     pub fn drop(&mut self) {
-        self.stack.pop().expect("Position stack is unexpectedly empty.");
+        self.stack
+            .pop()
+            .expect("Position stack is unexpectedly empty.");
     }
 
     pub fn next(&mut self) -> Option<Token> {
@@ -150,7 +184,7 @@ impl TokenInput {
     }
 
     pub fn prev(self) -> Option<Token> {
-        if self.index <= 1{
+        if self.index <= 1 {
             None
         } else if (self.index - 1) >= self.tokens.len() {
             None
@@ -161,12 +195,14 @@ impl TokenInput {
 }
 
 pub struct Parser {
-    pub input: TokenInput,  // TODO: don't keep public
+    pub input: TokenInput, // TODO: don't keep public
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self {input: TokenInput::new(tokens)}
+        Self {
+            input: TokenInput::new(tokens),
+        }
     }
 
     pub fn is_exhausted(&mut self) -> bool {
@@ -184,87 +220,104 @@ impl Parser {
         match self.parse_const_or_var_decl(false) {
             ParseResult::Err(err) => match err {
                 ParseError {
-                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                    kind: ParseErrorKind::UnexpectedEOF,
+                    msg: _,
+                    line: _,
+                    column: _,
                 } => return ParseResult::Err(err),
                 _ => (),
             },
             ParseResult::Ok((decl, pos)) => {
                 return ParseResult::Ok((Statement::ConstantDeclaration(decl), pos))
-            },
+            }
         }
 
         match self.parse_const_or_var_decl(true) {
             ParseResult::Err(err) => match err {
                 ParseError {
-                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                    kind: ParseErrorKind::UnexpectedEOF,
+                    msg: _,
+                    line: _,
+                    column: _,
                 } => return ParseResult::Err(err),
                 _ => (),
             },
             ParseResult::Ok((decl, pos)) => {
                 return ParseResult::Ok((Statement::VariableDeclaration(decl), pos))
-            },
+            }
         }
 
         match self.parse_fn_decl() {
             ParseResult::Err(err) => match err {
                 ParseError {
-                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                    kind: ParseErrorKind::UnexpectedEOF,
+                    msg: _,
+                    line: _,
+                    column: _,
                 } => return ParseResult::Err(err),
                 _ => (),
             },
             ParseResult::Ok((decl, pos)) => {
                 return ParseResult::Ok((Statement::FunctionDeclaration(decl), pos))
-            },
+            }
         }
 
         match self.parse_struct_or_union_decl(false) {
             ParseResult::Err(err) => match err {
                 ParseError {
-                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                    kind: ParseErrorKind::UnexpectedEOF,
+                    msg: _,
+                    line: _,
+                    column: _,
                 } => return ParseResult::Err(err),
                 _ => (),
             },
             ParseResult::Ok((decl, pos)) => {
                 return ParseResult::Ok((Statement::StructDeclaration(decl), pos))
-            },
+            }
         }
 
         match self.parse_struct_or_union_decl(true) {
             ParseResult::Err(err) => match err {
                 ParseError {
-                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                    kind: ParseErrorKind::UnexpectedEOF,
+                    msg: _,
+                    line: _,
+                    column: _,
                 } => return ParseResult::Err(err),
                 _ => (),
             },
             ParseResult::Ok((decl, pos)) => {
                 return ParseResult::Ok((Statement::UnionDeclaration(decl), pos))
-            },
+            }
         }
 
         match self.parse_type_decl() {
             ParseResult::Err(err) => match err {
                 ParseError {
-                    kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _,
+                    kind: ParseErrorKind::UnexpectedEOF,
+                    msg: _,
+                    line: _,
+                    column: _,
                 } => return ParseResult::Err(err),
                 _ => (),
             },
             ParseResult::Ok((decl, pos)) => {
                 return ParseResult::Ok((Statement::TypeDeclaration(decl), pos))
-            },
+            }
         }
 
         ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedToken))
     }
 
-    fn parse_const_or_var_decl(&mut self, is_var: bool) -> ParseResult<ConstantVariableDeclaration> {
+    fn parse_const_or_var_decl(
+        &mut self,
+        is_var: bool,
+    ) -> ParseResult<ConstantVariableDeclaration> {
         // "const" / "var" Identifier ":" Type "=" Expression ";"
         // keyword Field "=" Expression ";"
 
-        let keyword = if is_var {
-            Keyword::Var
-        } else {
-            Keyword::Const
-        };
+        let keyword = if is_var { Keyword::Var } else { Keyword::Const };
 
         // "const" / "var"
         match self.parse_keyword(keyword) {
@@ -296,24 +349,25 @@ impl Parser {
             ParseResult::Ok((_, remaining)) => remaining,
         };
 
-        ParseResult::Ok(
-            (
-                ConstantVariableDeclaration {
-                    is_var,
-                    identifier: field.identifier,
-                    const_type: field.field_type,
-                    value: expression,
-                },
-                position,
-            )
-        )
+        ParseResult::Ok((
+            ConstantVariableDeclaration {
+                is_var,
+                identifier: field.identifier,
+                const_type: field.field_type,
+                value: expression,
+            },
+            position,
+        ))
     }
 
     fn parse_fn_decl(&mut self) -> ParseResult<FunctionDeclaration> {
         ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedToken))
     }
 
-    fn parse_struct_or_union_decl(&mut self, is_union: bool) -> ParseResult<StructUnionDeclaration> {
+    fn parse_struct_or_union_decl(
+        &mut self,
+        is_union: bool,
+    ) -> ParseResult<StructUnionDeclaration> {
         // "struct" / "union" Identifier "{" ( Field ";" )* "}"
         // keyword Identifir "{" ( Field ";" )* "}"
 
@@ -337,7 +391,7 @@ impl Parser {
             ParseResult::Ok(_) => (),
         }
 
-        // ( Field "," )* 
+        // ( Field "," )*
         loop {
             // Parse fields until there are no more to parse.
             // parse_field will return ParseResult::Err when it is unable to parse another field:
@@ -345,15 +399,25 @@ impl Parser {
             match self.parse_field() {
                 ParseResult::Err(err) => match err {
                     ParseError {
-                        kind: ParseErrorKind::UnexpectedEOF, msg: _, line: _, column: _
-                    } => return ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF)),
+                        kind: ParseErrorKind::UnexpectedEOF,
+                        msg: _,
+                        line: _,
+                        column: _,
+                    } => {
+                        return ParseResult::Err(ParseError::from_kind(
+                            self,
+                            ParseErrorKind::UnexpectedEOF,
+                        ))
+                    }
                     _ => break,
                 },
-                ParseResult::Ok((field, _)) => fields.push(field), 
+                ParseResult::Ok((field, _)) => fields.push(field),
             }
 
             match self.parse_token(TokenKind::Comma) {
-                ParseResult::Err(err) => return ParseResult::Err(ParseError::unexpected_token(self)),
+                ParseResult::Err(err) => {
+                    return ParseResult::Err(ParseError::unexpected_token(self))
+                }
                 ParseResult::Ok(_) => (),
             }
         }
@@ -361,9 +425,14 @@ impl Parser {
         // "}"
         match self.parse_token(TokenKind::RightBrace) {
             ParseResult::Err(err) => ParseResult::Err(err),
-            ParseResult::Ok((_, remaining)) => ParseResult::Ok(
-                (StructUnionDeclaration {is_union, identifier, fields}, remaining)
-            ),
+            ParseResult::Ok((_, remaining)) => ParseResult::Ok((
+                StructUnionDeclaration {
+                    is_union,
+                    identifier,
+                    fields,
+                },
+                remaining,
+            )),
         }
     }
 
@@ -395,15 +464,16 @@ impl Parser {
             ParseResult::Ok((_, remaining)) => remaining,
         };
 
-        ParseResult::Ok((TypeDeclaration {identifier, ty}, position))
+        ParseResult::Ok((TypeDeclaration { identifier, ty }, position))
     }
 
     fn parse_expression(&mut self) -> ParseResult<Expression> {
         match self.parse_token(TokenKind::IntegerLiteral(IntegerLiteralKind::Decimal, 5)) {
             ParseResult::Err(err) => ParseResult::Err(err),
-            ParseResult::Ok((expr, position)) => ParseResult::Ok(
-                (Expression::IntegerLiteral(IntegerLiteralKind::Decimal, 5), position)
-            ),
+            ParseResult::Ok((expr, position)) => ParseResult::Ok((
+                Expression::IntegerLiteral(IntegerLiteralKind::Decimal, 5),
+                position,
+            )),
         }
     }
 
@@ -418,7 +488,7 @@ impl Parser {
         for (primitive, kind) in primitives {
             match self.parse_keyword(primitive) {
                 ParseResult::Err(_) => continue,
-                ParseResult::Ok((_, position)) => return ParseResult::Ok((kind, position))
+                ParseResult::Ok((_, position)) => return ParseResult::Ok((kind, position)),
             }
         }
 
@@ -449,16 +519,18 @@ impl Parser {
         match self.parse_token(TokenKind::Colon) {
             ParseResult::Err(err) => ParseResult::Err(err),
             // Type
-            ParseResult::Ok(_) => {
-                match self.parse_type() {
-                    ParseResult::Err(err) => ParseResult::Err(err),
-                    ParseResult::Ok((field_type, remaining)) => {
-                        return ParseResult::Ok(
-                            (Field { identifier, field_type }, remaining)
-                        )
-                    },
+            ParseResult::Ok(_) => match self.parse_type() {
+                ParseResult::Err(err) => ParseResult::Err(err),
+                ParseResult::Ok((field_type, remaining)) => {
+                    return ParseResult::Ok((
+                        Field {
+                            identifier,
+                            field_type,
+                        },
+                        remaining,
+                    ))
                 }
-            }
+            },
         }
     }
 
@@ -535,9 +607,7 @@ impl Parser {
             }
         } else {
             self.input.drop();
-            ParseResult::Err(
-                ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF)
-            )
+            ParseResult::Err(ParseError::from_kind(self, ParseErrorKind::UnexpectedEOF))
         }
     }
 }
